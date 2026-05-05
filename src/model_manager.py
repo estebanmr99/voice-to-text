@@ -179,6 +179,7 @@ class ModelManager:
         )
         self._registry_path = self._models_dir / "registry.json"
         self._models: dict[str, ModelInfo] = {}
+        self._profiles: dict[str, Profile] = {}
         self._load_registry()
 
     # ------------------------------------------------------------------
@@ -198,6 +199,7 @@ class ModelManager:
                 for entry in payload.get("models", []):
                     info = ModelInfo.from_dict(entry)
                     self._models[info.name] = info
+                self._load_profiles(payload.get("profiles"))
                 logger.debug(
                     "Loaded %d model(s) from registry", len(self._models)
                 )
@@ -233,6 +235,8 @@ class ModelManager:
             )
             self._models[info.name] = info
 
+        self._load_profiles(None)
+
         self._save_registry()
 
     def _save_registry(self) -> None:
@@ -240,6 +244,7 @@ class ModelManager:
         self._ensure_dir()
         payload = {
             "models": [m.to_dict() for m in self._models.values()],
+            "profiles": [asdict(p) for p in self._profiles.values()],
         }
         with self._registry_path.open("w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2, ensure_ascii=False)
@@ -253,6 +258,22 @@ class ModelManager:
             for chunk in iter(lambda: fh.read(8192), b""):
                 h.update(chunk)
         return h.hexdigest()
+
+    def _load_profiles(self, profiles_payload: Any) -> None:
+        """Load profile registry from payload or seed defaults."""
+        self._profiles.clear()
+        source = profiles_payload or self._DEFAULT_PROFILES
+        for entry in source:
+            profile = Profile(
+                canonical_name=entry["canonical_name"],
+                display_name=entry["display_name"],
+                description=entry["description"],
+                preferred_model=entry["preferred_model"],
+                fallback_order=list(entry.get("fallback_order", [])),
+                backend_hint=entry["backend_hint"],
+                shipping_default=bool(entry.get("shipping_default", False)),
+            )
+            self._profiles[profile.canonical_name] = profile
 
     # ------------------------------------------------------------------
     # Public API
@@ -278,6 +299,61 @@ class ModelManager:
     def list_models(self) -> list[ModelInfo]:
         """Return all registered models."""
         return list(self._models.values())
+
+    def list_profiles(self) -> list[Profile]:
+        """Return all defined profiles."""
+        return list(self._profiles.values())
+
+    def get_profile(self, canonical_name: str) -> Profile:
+        """Return profile by canonical name."""
+        try:
+            return self._profiles[canonical_name]
+        except KeyError as exc:
+            raise KeyError(f"Unknown profile: {canonical_name}") from exc
+
+    def get_shipping_default_profile(self) -> Profile:
+        """Return the profile marked as shipping default."""
+        for profile in self._profiles.values():
+            if profile.shipping_default:
+                return profile
+        raise KeyError("No shipping default profile configured")
+
+    def validate_model_metadata(self, info: ModelInfo) -> tuple[bool, list[str]]:
+        """Validate model metadata completeness.
+
+        Missing checksum is advisory only and does not make metadata incomplete.
+        """
+        warnings: list[str] = []
+        is_complete = True
+
+        if not info.name:
+            warnings.append("Missing model name")
+            is_complete = False
+        if not str(info.path):
+            warnings.append("Missing model path")
+            is_complete = False
+        if info.size_mb <= 0:
+            warnings.append("Missing or invalid model size_mb")
+            is_complete = False
+        if not info.backend:
+            warnings.append("Missing backend")
+            is_complete = False
+        if not info.profile_compatibility:
+            warnings.append("Missing profile compatibility")
+            is_complete = False
+        if not info.checksum_sha256:
+            warnings.append("Missing checksum_sha256 (optional but recommended)")
+        if not info.source_url:
+            warnings.append("Missing source_url")
+        if not info.license_status:
+            warnings.append("Missing license_status")
+            is_complete = False
+        elif info.license_status == "candidate":
+            warnings.append("license_status is candidate; verify before release")
+        elif info.license_status == "blocked":
+            warnings.append("license_status is blocked")
+
+        return is_complete, warnings
 
     def validate_model(self, info: ModelInfo) -> bool:
         """Check whether *info* points to a readable model file.
@@ -329,12 +405,23 @@ class ModelManager:
                 "Run the app once to seed the registry, or check your settings."
             )
 
-        url = _SIDeload_URLS.get(profile, (
-            "https://huggingface.co/ggerganov/whisper.cpp/tree/main "
-            "(find the matching GGML/GGUF file)"
-        ))
+        url = info.source_url or _SIDeload_URLS.get(
+            profile,
+            (
+                "https://huggingface.co/ggerganov/whisper.cpp/tree/main "
+                "(find the matching GGML/GGUF file)"
+            ),
+        )
+
+        blocked_prefix = ""
+        if info.license_status == "blocked":
+            blocked_prefix = (
+                "WARNING: This model is marked as blocked by license policy. "
+                "Do not use it in release builds.\n\n"
+            )
 
         return (
+            f"{blocked_prefix}"
             f"Model '{profile}' is not available locally.\n\n"
             f"Expected file: {info.path}\n"
             f"Expected size: ~{info.size_mb} MB\n\n"
