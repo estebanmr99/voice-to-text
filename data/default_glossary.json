@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {"input": "pr", "output": "PR", "context": "pull request"},
+    {"input": "api", "output": "API", "context": "application programming interface"},
+    {"input": "ci", "output": "CI", "context": "continuous integration"},
+    {"input": "cd", "output": "CD", "context": "continuous deployment"},
+    {"input": "url", "output": "URL", "context": "uniform resource locator"},
+    {"input": "html", "output": "HTML", "context": "markup language"},
+    {"input": "css", "output": "CSS", "context": "stylesheets"},
+    {"input": "sql", "output": "SQL", "context": "database query language"},
+    {"input": "ssh", "output": "SSH", "context": "secure shell"},
+    {"input": "cpu", "output": "CPU", "context": "processor"},
+    {"input": "gpu", "output": "GPU", "context": "graphics processor"},
+    {"input": "ram", "output": "RAM", "context": "memory"},
+    {"input": "ios", "output": "iOS", "context": "Apple mobile OS"},
+    {"input": "sdk", "output": "SDK", "context": "software development kit"},
+    {"input": "ide", "output": "IDE", "context": "integrated development environment"},
+    {"input": "sre", "output": "SRE", "context": "site reliability engineering"},
+    {"input": "devops", "output": "DevOps", "context": "development operations"},
+    {"input": "frontend", "output": "frontend", "context": "preserve"},
+    {"input": "backend", "output": "backend", "context": "preserve"},
+    {"input": "hotfix", "output": "hotfix", "context": "preserve"},
+    {"input": "deploy", "output": "deploy", "context": "preserve"},
+    {"input": "merge", "output": "merge", "context": "preserve"},
+    {"input": "commit", "output": "commit", "context": "preserve"},
+    {"input": "bug", "output": "bug", "context": "preserve"},
+    {"input": "feature", "output": "feature", "context": "preserve"}
+  ],
+  "version": 1,
+  "description": "Default Spanglish technical glossary — deterministic term normalization"
+}
