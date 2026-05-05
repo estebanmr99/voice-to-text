@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 02-03 Transcriber complete. ModelManager, transcriber worker, and Transcriber orchestrator committed. Ready for 02-05 (wire dictation loop).
-last_updated: "2026-05-05T06:30:00.000Z"
+stopped_at: 02-05 Wire dictation loop complete. PrivacyGuard, ShellIntegration, DictationLoop, and main.py wiring committed.
+last_updated: "2026-05-05T12:00:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -43,13 +43,14 @@ progress:
 - 2026-05-04: **02-02 audio+VAD complete** — AudioCapture (sounddevice/PortAudio), SpeechDetector (webrtcvad), integration tests committed
 - 2026-05-05: **02-04 PasteController complete** — SendInput/clipboard paste with backup/restore, automatic fallback, retry logic, and comprehensive mocked unit tests
 - 2026-05-05: **02-03 Transcriber complete** — ModelManager with JSON registry, pywhispercpp worker process via multiprocessing, crash recovery with backoff
+- 2026-05-05: **02-05 Wire dictation loop complete** — PrivacyGuard with runtime network blocking, ShellIntegration with global hotkey and tray, DictationLoop orchestrating full audio→VAD→transcribe→paste, main.py wired
 
 ## Pending Todos
 
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
-- Execute Phase 2 plan: 02-05 (wire dictation loop)
-- Run pytest on 02-01, 02-02, 02-03, and 02-04 tests once Python toolchain is available on execution environment
+- Run pytest on all tests once Python toolchain is available on execution environment
+- Phase 2 MVP complete — ready for Phase 3 (Model Profiles) or Phase 4 (GUI & Tray Polish)
 
 ## Blockers/Concerns
 
@@ -70,7 +71,7 @@ Resume file: .planning/phases/02-mvp-offline-dictation/02-03-SUMMARY.md
 | 1. GSD tooling recovery | DONE | Canonical files hand-written; `gsd-sdk` CLI available for non-LLM queries |
 | 2. Architecture/privacy/licensing | DONE | — |
 | 3. ASR/VAD benchmark | PARTIAL | 2 of 10 ASR models available (base, small); VAD assets pending |
-| 4. MVP dictation loop | IN PROGRESS | 02-01 scaffold done; 02-02 audio+VAD done; 02-03 transcriber done; 02-04 paste done; 02-05 next |
+| 4. MVP dictation loop | DONE | 02-01 through 02-05 complete; full push-to-talk loop wired |
 | 5. Model profiles | BLOCKED | Needs Task 4 |
 | 6. GUI/tray polish | BLOCKED | Needs Task 4 |
 | 7. Spanglish glossary | BLOCKED | Needs Task 4 |

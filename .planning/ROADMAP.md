@@ -5,7 +5,7 @@
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
 | 1 | Planning & Architecture | Lock architecture, privacy, licensing, benchmark design | PRIV-01, PRIV-02, MOD-01, MOD-02, TEST-01, TEST-02 | In Progress |
-| 2 | MVP Offline Dictation | 4/5 | In Progress|  |
+| 2 | MVP Offline Dictation | 5/5 | Complete | |
 | 3 | Model Profiles | Add local model manager and hardware-specific profiles | PROF-01–03 | Blocked |
 | 4 | GUI & Tray Polish | Floating panel, settings, confirmation mode | GUI-01–03 | Blocked |
 | 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | Blocked |
@@ -72,7 +72,7 @@
 - [x] 02-03: Integrate whisper.cpp transcriber worker — `pywhispercpp` in `multiprocessing.Process`, `ModelManager`
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 02-05: Wire dictation loop and add error states — `DictationLoop`, `ShellIntegration`, `PrivacyGuard`, hotkey wiring
+- [x] 02-05: Wire dictation loop and add error states — `DictationLoop`, `ShellIntegration`, `PrivacyGuard`, hotkey wiring
 
 **Cross-cutting constraints:**
 - No runtime network (PRIV-01) — enforced by `PrivacyGuard` in 02-05

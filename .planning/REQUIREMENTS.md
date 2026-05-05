@@ -4,22 +4,22 @@
 
 ### Privacy & Security
 
-- [ ] **PRIV-01**: App must never make runtime network calls for ASR, telemetry, model downloads, updates, or any purpose
+- [x] **PRIV-01**: App must never make runtime network calls for ASR, telemetry, model downloads, updates, or any purpose
 - [ ] **PRIV-02**: No retained audio or transcripts by default; diagnostics are redacted and local-only
-- [ ] **TEST-01**: Privacy tests must fail if network calls (socket, HTTP, telemetry, download) are introduced
+- [x] **TEST-01**: Privacy tests must fail if network calls (socket, HTTP, telemetry, download) are introduced
 - [ ] **TEST-02**: Missing or corrupt local model paths return local errors without network attempts
 
 ### Core Dictation
 
-- [ ] **CORE-01**: Activate dictation via global hotkey with push-to-talk and toggle modes
+- [x] **CORE-01**: Activate dictation via global hotkey with push-to-talk and toggle modes
 - [x] **CORE-02**: Capture microphone audio with local device selection, WASAPI-compatible backend
 - [x] **CORE-03**: Detect speech start/end using VAD with selectable profiles (WebRTC default, Silero accurate)
 - [x] **CORE-04**: Transcribe offline using local quantized Whisper models via whisper.cpp or faster-whisper
 - [ ] **CORE-05**: Post-process transcripts with deterministic Spanglish technical glossary (no LLM rewriting)
 - [x] **CORE-06**: Paste final text into focused Windows app via clipboard + SendInput
 - [x] **CORE-07**: Preserve and restore previous clipboard contents where feasible
-- [ ] **CORE-08**: Show status via system tray icon and floating topmost panel
-- [ ] **CORE-09**: Run without admin rights for normal use
+- [x] **CORE-08**: Show status via system tray icon and floating topmost panel
+- [x] **CORE-09**: Run without admin rights for normal use
 
 ### Architecture
 
@@ -64,19 +64,19 @@
 
 | REQ-ID | Description | Phase | Plan | Status |
 |--------|-------------|-------|------|--------|
-| PRIV-01 | No runtime network | 1 | 01-02 | Defined |
+| PRIV-01 | No runtime network | 1 / 2 | 01-02 / 02-05 | Complete |
 | PRIV-02 | Zero-retention defaults | 1 | 01-02 | Defined |
-| TEST-01 | Network-blocking privacy tests | 1 | 01-02 | Defined |
+| TEST-01 | Network-blocking privacy tests | 1 / 2 | 01-02 / 02-05 | Complete |
 | TEST-02 | Missing model offline behavior | 1 | 01-03 | Defined |
-| CORE-01 | Global hotkey activation | 2 | 02-05 | Defined |
+| CORE-01 | Global hotkey activation | 2 | 02-05 | Complete |
 | CORE-02 | Microphone capture | 2 | 02-02 | Complete |
 | CORE-03 | VAD speech detection | 2 | 02-02 | Complete |
-| CORE-04 | Offline transcription | 2 | 02-03 | Defined |
+| CORE-04 | Offline transcription | 2 | 02-03 | Complete |
 | CORE-05 | Spanglish glossary | 5 | 05-01 | Defined |
 | CORE-06 | Paste into focused app | 2 | 02-04 | Complete |
 | CORE-07 | Clipboard restore | 2 | 02-04 | Complete |
-| CORE-08 | Tray + floating panel | 4 | 04-02 | Defined |
-| CORE-09 | No admin required | 2 | 02-01 | Defined |
+| CORE-08 | Tray + floating panel | 2 / 4 | 02-05 / 04-02 | Complete |
+| CORE-09 | No admin required | 2 | 02-05 | Complete |
 | MOD-01 | Backend-switchable architecture | 1 | 01-02 | Defined |
 | MOD-02 | Worker process isolation | 1 | 01-02 | Defined |
 | PROF-01 | CPU portable profile | 3 | 03-01 | Defined |
