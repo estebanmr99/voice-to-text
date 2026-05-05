@@ -31,6 +31,8 @@ from paste_controller import PasteController
 from dictation_loop import DictationLoop
 from confirmation_dialog import ConfirmationDialog
 from shell_integration import ShellIntegration
+from post_processor import PostProcessor
+from glossary import GlossaryStore
 
 
 def _apply_profile_change(
@@ -136,6 +138,12 @@ def main() -> int:
     paste_controller = PasteController(diagnostics=diagnostics)
 
     # ------------------------------------------------------------------
+    # Post-processor for Spanglish glossary normalization
+    # ------------------------------------------------------------------
+    glossary_store = GlossaryStore.from_settings(settings)
+    post_processor = PostProcessor(glossary_store)
+
+    # ------------------------------------------------------------------
     # Dictation loop
     # ------------------------------------------------------------------
     dictation_loop = DictationLoop(
@@ -145,6 +153,7 @@ def main() -> int:
         transcriber=transcriber,
         paste_controller=paste_controller,
         diagnostics=diagnostics,
+        post_processor=post_processor,
     )
 
     # ------------------------------------------------------------------

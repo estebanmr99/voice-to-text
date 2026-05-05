@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from speech_detector import SpeechDetector, VADEvent
     from transcriber import Transcriber
     from paste_controller import PasteController
+    from post_processor import PostProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class DictationLoop(QObject):
         transcriber: "Transcriber",
         paste_controller: "PasteController",
         diagnostics: "Diagnostics | None" = None,
+        post_processor: "PostProcessor | None" = None,
     ) -> None:
         super().__init__()
         self._settings = settings
@@ -69,6 +71,7 @@ class DictationLoop(QObject):
         self._transcriber = transcriber
         self._paste_controller = paste_controller
         self._diagnostics = diagnostics
+        self._post_processor = post_processor
 
         self._state = DictationState.IDLE
         self._audio_buffer: list[np.ndarray] = []
@@ -184,6 +187,10 @@ class DictationLoop(QObject):
             logger.exception("Transcription failed: %s", exc)
             self._handle_error("transcription", "Transcription failed. Try again.")
             return
+
+        # Normalize text through PostProcessor if available
+        if self._post_processor is not None:
+            text = self._post_processor.normalize(text)
 
         if not text:
             # Silent or very short audio — just go back to idle

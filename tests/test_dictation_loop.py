@@ -270,3 +270,155 @@ class TestAutoReset:
         loop._audio_buffer = [frame]
         loop._on_audio_block(frame)
         assert len(loop._audio_buffer) == 0
+
+
+class TestPostProcessorIntegration:
+    """Tests for DictationLoop with PostProcessor normalization."""
+
+    @pytest.fixture
+    def pp_mock_deps(self):
+        """Return mock dependencies with a mock PostProcessor."""
+        settings = MagicMock()
+        settings.paste_mode = "immediate"
+
+        audio_capture = MagicMock()
+        speech_detector = MagicMock()
+        transcriber = MagicMock()
+        paste_controller = MagicMock()
+        diagnostics = MagicMock()
+        post_processor = MagicMock()
+        # By default, pass through
+        post_processor.normalize.side_effect = lambda t: t.upper()
+
+        return {
+            "settings": settings,
+            "audio_capture": audio_capture,
+            "speech_detector": speech_detector,
+            "transcriber": transcriber,
+            "paste_controller": paste_controller,
+            "diagnostics": diagnostics,
+            "post_processor": post_processor,
+        }
+
+    @pytest.fixture
+    def pp_loop(self, pp_mock_deps, qapp):
+        return DictationLoop(
+            settings=pp_mock_deps["settings"],
+            audio_capture=pp_mock_deps["audio_capture"],
+            speech_detector=pp_mock_deps["speech_detector"],
+            transcriber=pp_mock_deps["transcriber"],
+            paste_controller=pp_mock_deps["paste_controller"],
+            diagnostics=pp_mock_deps["diagnostics"],
+            post_processor=pp_mock_deps["post_processor"],
+        )
+
+    def test_normalizes_before_paste_immediate(self, pp_loop, pp_mock_deps, qapp):
+        """PostProcessor normalizes text before pasting in immediate mode."""
+        from speech_detector import VADEvent
+
+        pp_loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        pp_mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        pp_mock_deps["transcriber"].transcribe.return_value = "mergear el pr"
+        pp_mock_deps["post_processor"].normalize.side_effect = None
+        pp_mock_deps["post_processor"].normalize.return_value = "mergear el PR"
+        pp_mock_deps["paste_controller"].paste.return_value = True
+
+        pp_loop._on_audio_block(frame)
+        if pp_loop._auto_reset_timer is not None:
+            pp_loop._auto_reset_timer.stop()
+
+        pp_mock_deps["post_processor"].normalize.assert_called_once_with("mergear el pr")
+        pp_mock_deps["paste_controller"].paste.assert_called_once_with("mergear el PR")
+
+    def test_normalizes_before_confirmation_emit(self, pp_loop, pp_mock_deps, qapp):
+        """PostProcessor normalizes text in confirmation mode too."""
+        from speech_detector import VADEvent
+
+        pp_mock_deps["settings"].paste_mode = "confirmation"
+        pp_mock_deps["post_processor"].normalize.side_effect = None
+        pp_mock_deps["post_processor"].normalize.return_value = "mergear el PR"
+
+        pp_loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        pp_mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        pp_mock_deps["transcriber"].transcribe.return_value = "mergear el pr"
+
+        received = []
+        pp_loop.transcription_ready.connect(lambda t: received.append(t))
+        pp_loop._on_audio_block(frame)
+
+        assert received == ["mergear el PR"]
+        pp_mock_deps["post_processor"].normalize.assert_called_once_with("mergear el pr")
+
+    def test_none_post_processor_falls_back_to_raw(self, mock_deps, qapp):
+        """When post_processor=None, raw text passes through unchanged."""
+        from speech_detector import VADEvent
+
+        loop = DictationLoop(
+            settings=mock_deps["settings"],
+            audio_capture=mock_deps["audio_capture"],
+            speech_detector=mock_deps["speech_detector"],
+            transcriber=mock_deps["transcriber"],
+            paste_controller=mock_deps["paste_controller"],
+            diagnostics=mock_deps["diagnostics"],
+            post_processor=None,
+        )
+
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        mock_deps["transcriber"].transcribe.return_value = "mergear el pr"
+        mock_deps["paste_controller"].paste.return_value = True
+
+        loop._on_audio_block(frame)
+        if loop._auto_reset_timer is not None:
+            loop._auto_reset_timer.stop()
+
+        mock_deps["paste_controller"].paste.assert_called_once_with("mergear el pr")
+
+    def test_normalize_called_once_per_cycle(self, pp_loop, pp_mock_deps, qapp):
+        """PostProcessor.normalize is called exactly once per transcription cycle."""
+        from speech_detector import VADEvent
+
+        pp_mock_deps["post_processor"].normalize.side_effect = None
+        pp_mock_deps["post_processor"].normalize.return_value = "normalized"
+        pp_mock_deps["paste_controller"].paste.return_value = True
+
+        pp_loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        pp_mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        pp_mock_deps["transcriber"].transcribe.return_value = "raw text"
+
+        pp_loop._on_audio_block(frame)
+        if pp_loop._auto_reset_timer is not None:
+            pp_loop._auto_reset_timer.stop()
+
+        assert pp_mock_deps["post_processor"].normalize.call_count == 1
+
+    def test_normalize_not_called_when_no_post_processor(self, mock_deps, qapp):
+        """When no PostProcessor is configured, normalize is never called."""
+        from speech_detector import VADEvent
+
+        loop = DictationLoop(
+            settings=mock_deps["settings"],
+            audio_capture=mock_deps["audio_capture"],
+            speech_detector=mock_deps["speech_detector"],
+            transcriber=mock_deps["transcriber"],
+            paste_controller=mock_deps["paste_controller"],
+            diagnostics=mock_deps["diagnostics"],
+            post_processor=None,
+        )
+
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        mock_deps["transcriber"].transcribe.return_value = "raw text"
+        mock_deps["paste_controller"].paste.return_value = True
+
+        loop._on_audio_block(frame)
+        if loop._auto_reset_timer is not None:
+            loop._auto_reset_timer.stop()
+
+        # Should still paste raw text without crash
+        mock_deps["paste_controller"].paste.assert_called_once_with("raw text")
