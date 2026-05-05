@@ -185,7 +185,7 @@
 - [x] 06-02: SBOM and conservative license bundle generation
 
 **Wave 2** *(depends on Wave 1)*
-- [ ] 06-03: GitHub-ready release documentation, model side-loading, privacy, and MIT license
+- [x] 06-03: GitHub-ready release documentation, model side-loading, privacy, and MIT license
 
 **Wave 3** *(depends on Wave 2)*
 - [ ] 06-04: GitHub release workflow, checksums, and artifact verifier
