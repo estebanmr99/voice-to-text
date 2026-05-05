@@ -164,7 +164,7 @@ class TestShellIntegration:
         shell._settings.model_profile = "cpu-portable"
         tray = shell.setup_tray()
         menu = tray.contextMenu()
-        profile_menu = next(a.menu() for a in menu.actions() if a.text() == "Profile")
+        profile_menu = next(a.menu() for a in menu.actions() if a.menu() and a.text() == "Profile")
         actions = {a.text(): a for a in profile_menu.actions() if a.text()}
         assert actions["CPU Portable"].isChecked()
         assert not actions["CPU High Accuracy"].isChecked()
@@ -172,7 +172,7 @@ class TestShellIntegration:
     def test_profile_selection_emits_signal(self, shell, qapp):
         tray = shell.setup_tray()
         menu = tray.contextMenu()
-        profile_menu = next(a.menu() for a in menu.actions() if a.text() == "Profile")
+        profile_menu = next(a.menu() for a in menu.actions() if a.menu() and a.text() == "Profile")
         target = next(a for a in profile_menu.actions() if a.text() == "CPU High Accuracy")
         seen = []
         shell.profile_changed.connect(lambda p: seen.append(p))
@@ -182,7 +182,7 @@ class TestShellIntegration:
     def test_profile_selection_updates_settings(self, shell, qapp):
         tray = shell.setup_tray()
         menu = tray.contextMenu()
-        profile_menu = next(a.menu() for a in menu.actions() if a.text() == "Profile")
+        profile_menu = next(a.menu() for a in menu.actions() if a.menu() and a.text() == "Profile")
         target = next(a for a in profile_menu.actions() if a.text() == "CPU High Accuracy")
         target.trigger()
         assert shell._settings.model_profile == "cpu-high-accuracy"
