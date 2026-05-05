@@ -21,11 +21,9 @@ import speech_detector as sd
 
 @pytest.fixture
 def mock_vad():
-    """Patch ``webrtcvad.Vad`` in the speech_detector module."""
-    with patch.object(sd, "webrtcvad") as mock_module:
-        instance = MagicMock()
-        mock_module.Vad.return_value = instance
-        yield instance
+    """Provide a mock VAD backend for deterministic tests."""
+    instance = MagicMock()
+    yield instance
 
 
 # ---------------------------------------------------------------------------
@@ -35,34 +33,34 @@ def mock_vad():
 
 class TestSpeechDetectorConfig:
     def test_default_parameters(self, mock_vad):
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         assert detector.frame_size == 480  # 16000 * 0.03
 
     def test_aggressiveness_levels(self, mock_vad):
         for level in (0, 1, 2, 3):
-            sd.SpeechDetector(aggressiveness=level)
+            sd.SpeechDetector(aggressiveness=level, vad_backend=mock_vad)
         assert mock_vad.is_speech is not None
 
     def test_invalid_aggressiveness_raises(self, mock_vad):
         with pytest.raises(ValueError, match="aggressiveness"):
-            sd.SpeechDetector(aggressiveness=4)
+            sd.SpeechDetector(aggressiveness=4, vad_backend=mock_vad)
 
     def test_invalid_frame_duration_raises(self, mock_vad):
         with pytest.raises(ValueError, match="frame_duration_ms"):
-            sd.SpeechDetector(frame_duration_ms=15)
+            sd.SpeechDetector(frame_duration_ms=15, vad_backend=mock_vad)
 
     def test_invalid_samplerate_raises(self, mock_vad):
         with pytest.raises(ValueError, match="samplerate"):
-            sd.SpeechDetector(samplerate=44100)
+            sd.SpeechDetector(samplerate=44100, vad_backend=mock_vad)
 
     def test_durations_produce_correct_frame_size(self, mock_vad):
-        detector = sd.SpeechDetector(samplerate=8000, frame_duration_ms=10)
+        detector = sd.SpeechDetector(samplerate=8000, frame_duration_ms=10, vad_backend=mock_vad)
         assert detector.frame_size == 80
 
-        detector = sd.SpeechDetector(samplerate=16000, frame_duration_ms=20)
+        detector = sd.SpeechDetector(samplerate=16000, frame_duration_ms=20, vad_backend=mock_vad)
         assert detector.frame_size == 320
 
-        detector = sd.SpeechDetector(samplerate=32000, frame_duration_ms=30)
+        detector = sd.SpeechDetector(samplerate=32000, frame_duration_ms=30, vad_backend=mock_vad)
         assert detector.frame_size == 960
 
 
@@ -74,29 +72,29 @@ class TestSpeechDetectorConfig:
 class TestSpeechDetectorRawDecision:
     def test_is_speech_true(self, mock_vad):
         mock_vad.is_speech.return_value = True
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         frame = np.zeros(480, dtype=np.int16)
         assert detector.is_speech(frame) is True
 
     def test_is_speech_false(self, mock_vad):
         mock_vad.is_speech.return_value = False
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         frame = np.zeros(480, dtype=np.int16)
         assert detector.is_speech(frame) is False
 
     def test_is_speech_wrong_size_raises(self, mock_vad):
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         with pytest.raises(ValueError, match="Frame size"):
             detector.is_speech(np.zeros(100, dtype=np.int16))
 
     def test_is_speech_wrong_dtype_raises(self, mock_vad):
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         with pytest.raises(TypeError, match="int16"):
             detector.is_speech(np.zeros(480, dtype=np.float32))
 
     def test_is_speech_passes_bytes_to_webrtcvad(self, mock_vad):
         mock_vad.is_speech.return_value = True
-        detector = sd.SpeechDetector(samplerate=16000)
+        detector = sd.SpeechDetector(samplerate=16000, vad_backend=mock_vad)
         frame = np.ones(480, dtype=np.int16)
         detector.is_speech(frame)
 
@@ -114,7 +112,7 @@ class TestSpeechDetectorRawDecision:
 class TestSpeechDetectorStateMachine:
     def test_speech_start_after_three_frames(self, mock_vad):
         mock_vad.is_speech.return_value = True
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
 
         assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
         assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
@@ -126,7 +124,7 @@ class TestSpeechDetectorStateMachine:
         # Pattern: 4 speech frames (start + 1 extra), then 10 silence frames
         returns = [True] * 4 + [False] * 10
         mock_vad.is_speech.side_effect = returns
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
 
         # First 3 → SPEECH_START
         detector.process_frame(np.zeros(480, dtype=np.int16))
@@ -146,7 +144,7 @@ class TestSpeechDetectorStateMachine:
 
     def test_silence_returned_when_not_in_speech(self, mock_vad):
         mock_vad.is_speech.return_value = False
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
 
         for _ in range(5):
             assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SILENCE
@@ -155,7 +153,7 @@ class TestSpeechDetectorStateMachine:
         """A single silence frame between speech frames resets the counter."""
         returns = [True, True, False, True, True, True]
         mock_vad.is_speech.side_effect = returns
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
 
         detector.process_frame(np.zeros(480, dtype=np.int16))  # 1 speech
         detector.process_frame(np.zeros(480, dtype=np.int16))  # 2 speech
@@ -168,7 +166,7 @@ class TestSpeechDetectorStateMachine:
     def test_buffer_accumulates_during_speech(self, mock_vad):
         returns = [True] * 6 + [False] * 10
         mock_vad.is_speech.side_effect = returns
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
 
         for _ in range(16):
             detector.process_frame(np.ones(480, dtype=np.int16))
@@ -188,7 +186,7 @@ class TestSpeechDetectorStateMachine:
 class TestSpeechDetectorReset:
     def test_reset_clears_state(self, mock_vad):
         mock_vad.is_speech.return_value = True
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         detector.process_frame(np.zeros(480, dtype=np.int16))
         detector.process_frame(np.zeros(480, dtype=np.int16))
         detector.process_frame(np.zeros(480, dtype=np.int16))  # SPEECH_START
@@ -199,7 +197,7 @@ class TestSpeechDetectorReset:
 
     def test_reset_allows_fresh_start(self, mock_vad):
         mock_vad.is_speech.return_value = True
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         detector.process_frame(np.zeros(480, dtype=np.int16))
         detector.process_frame(np.zeros(480, dtype=np.int16))
         detector.process_frame(np.zeros(480, dtype=np.int16))
@@ -218,13 +216,13 @@ class TestSpeechDetectorReset:
 
 class TestSpeechDetectorBuffer:
     def test_buffer_empty_before_speech(self, mock_vad):
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         assert len(detector.speech_buffer) == 0
 
     def test_buffer_available_after_speech_end(self, mock_vad):
         returns = [True] * 5 + [False] * 10
         mock_vad.is_speech.side_effect = returns
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         for _ in range(15):
             detector.process_frame(np.zeros(480, dtype=np.int16))
         assert len(detector.speech_buffer) > 0
@@ -232,7 +230,7 @@ class TestSpeechDetectorBuffer:
     def test_buffer_cleared_on_next_speech_start(self, mock_vad):
         returns = [True] * 5 + [False] * 10 + [True] * 3
         mock_vad.is_speech.side_effect = returns
-        detector = sd.SpeechDetector()
+        detector = sd.SpeechDetector(vad_backend=mock_vad)
         for _ in range(15):
             detector.process_frame(np.zeros(480, dtype=np.int16))
         old_len = len(detector.speech_buffer)

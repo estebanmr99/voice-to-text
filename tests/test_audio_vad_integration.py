@@ -37,7 +37,7 @@ class TestDirectBlockFeeding:
         )
         mock_webrtcvad.is_speech.side_effect = is_speech_pattern[:num_blocks]
 
-        detector = SpeechDetector(aggressiveness=1)
+        detector = SpeechDetector(aggressiveness=1, vad_backend=mock_webrtcvad)
         events = []
 
         for i in range(num_blocks):
@@ -69,7 +69,7 @@ class TestDirectBlockFeeding:
         )
         mock_webrtcvad.is_speech.side_effect = is_speech_pattern[:num_blocks]
 
-        detector = SpeechDetector(aggressiveness=1)
+        detector = SpeechDetector(aggressiveness=1, vad_backend=mock_webrtcvad)
         for i in range(num_blocks):
             block = sample_audio_16khz[i * blocksize : (i + 1) * blocksize]
             detector.process_frame(block)
@@ -101,7 +101,7 @@ class TestAudioCaptureToVadPipeline:
         )
         mock_webrtcvad.is_speech.side_effect = is_speech_pattern[:num_blocks]
 
-        detector = SpeechDetector(aggressiveness=1)
+        detector = SpeechDetector(aggressiveness=1, vad_backend=mock_webrtcvad)
         events = []
 
         def capture_callback(block: np.ndarray) -> None:
@@ -131,7 +131,7 @@ class TestAudioCaptureToVadPipeline:
     def test_capture_format_matches_vad_requirements(self, mock_sounddevice, mock_webrtcvad):
         """AudioCapture output shape/dtype must be compatible with SpeechDetector input."""
         cap = AudioCapture(samplerate=16000, block_duration_ms=30)
-        detector = SpeechDetector(samplerate=16000, frame_duration_ms=30)
+        detector = SpeechDetector(samplerate=16000, frame_duration_ms=30, vad_backend=mock_webrtcvad)
 
         assert cap.blocksize == detector.frame_size
         assert cap.blocksize == 480

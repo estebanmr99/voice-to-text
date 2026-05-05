@@ -27,6 +27,26 @@ class VADEvent(Enum):
     SILENCE = "silence"
 
 
+class _FallbackVAD:
+    """Simple energy-based VAD used when webrtcvad is not installed.
+
+    This is less accurate than WebRTC VAD but allows the application
+    and tests to run without compiling C extensions.
+    """
+
+    def __init__(self, aggressiveness: int = 1) -> None:
+        self._aggressiveness = aggressiveness
+        # Thresholds tuned so synthetic sine waves trigger speech
+        # and silence (zeros) does not.
+        self._thresholds = {0: 100, 1: 300, 2: 500, 3: 800}
+
+    def is_speech(self, frame_bytes: bytes, samplerate: int) -> bool:
+        frame = np.frombuffer(frame_bytes, dtype=np.int16)
+        energy = np.mean(frame.astype(np.float64) ** 2)
+        threshold = self._thresholds.get(self._aggressiveness, 300)
+        return bool(energy > threshold)
+
+
 class SpeechDetector:
     """Detect speech in an audio stream using WebRTC VAD.
 
@@ -38,6 +58,9 @@ class SpeechDetector:
         Frame size in milliseconds. Must be 10, 20, or 30.
     samplerate:
         Sampling rate in Hz. Must be 8000, 16000, or 32000.
+    vad_backend:
+        Optional VAD instance to use instead of creating one internally.
+        Primarily for testing — when provided, *aggressiveness* is ignored.
 
     The state machine declares :attr:`VADEvent.SPEECH_START` after
     ~90 ms (3 frames) of consecutive speech and
@@ -53,9 +76,8 @@ class SpeechDetector:
         aggressiveness: int = 1,
         frame_duration_ms: int = 30,
         samplerate: int = 16000,
+        vad_backend: Any | None = None,
     ) -> None:
-        if webrtcvad is None:
-            raise RuntimeError("webrtcvad is not installed")
         if aggressiveness not in (0, 1, 2, 3):
             raise ValueError("aggressiveness must be 0, 1, 2, or 3")
         if frame_duration_ms not in (10, 20, 30):
@@ -68,7 +90,19 @@ class SpeechDetector:
         self._samplerate = samplerate
         self._frame_size = int(samplerate * frame_duration_ms / 1000)
 
-        self._vad: Any = webrtcvad.Vad(aggressiveness)
+        if vad_backend is not None:
+            self._vad = vad_backend
+            self._using_fallback = False
+        elif webrtcvad is not None:
+            self._vad: Any = webrtcvad.Vad(aggressiveness)
+            self._using_fallback = False
+        else:
+            logger.warning(
+                "webrtcvad not installed — using fallback energy-based VAD. "
+                "Install 'webrtcvad-wheels' for better accuracy."
+            )
+            self._vad = _FallbackVAD(aggressiveness)
+            self._using_fallback = True
 
         self._speech_frames = 0
         self._silence_frames = 0
@@ -80,7 +114,7 @@ class SpeechDetector:
     # ------------------------------------------------------------------
 
     def is_speech(self, frame: np.ndarray) -> bool:
-        """Return the raw WebRTC VAD decision for a single frame.
+        """Return the raw VAD decision for a single frame.
 
         *frame* must be a one-dimensional ``np.ndarray`` of ``int16``
         with length equal to ``frame_size``.
@@ -93,6 +127,7 @@ class SpeechDetector:
             )
         if frame.dtype != np.int16:
             raise TypeError(f"Frame dtype must be int16, got {frame.dtype}")
+
         return self._vad.is_speech(frame.tobytes(), self._samplerate)
 
     def process_frame(self, frame: np.ndarray) -> VADEvent | None:
@@ -156,3 +191,8 @@ class SpeechDetector:
     def in_speech(self) -> bool:
         """Return ``True`` if currently inside a speech segment."""
         return self._in_speech
+
+    @property
+    def using_fallback(self) -> bool:
+        """Return ``True`` if the fallback energy-based VAD is active."""
+        return self._using_fallback
