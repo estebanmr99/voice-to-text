@@ -1,0 +1,203 @@
+{
+  "task": "task-3-benchmark-asr-vad-model-candidates",
+  "generated_at": "2026-05-04",
+  "scope": "offline windows technical spanglish dictation benchmark planning",
+  "runtime_policy": {
+    "no_runtime_network": true,
+    "no_telemetry": true,
+    "no_cloud_fallback": true,
+    "no_runtime_download": true,
+    "no_retained_audio": true,
+    "no_retained_transcripts_by_default": true
+  },
+  "local_asset_scan": {
+    "result": "no local ASR or VAD model artifacts found in repo workspace",
+    "status": "pending local side-load"
+  },
+  "fixtures": [
+    "mergear el PR",
+    "hacer deploy",
+    "abre el branch de staging",
+    "corre los tests",
+    "pushea el hotfix",
+    "rollback en producción"
+  ],
+  "measurement_columns": {
+    "asr": [
+      "speech_end_to_text_latency",
+      "ram_or_vram",
+      "model_load_time",
+      "qualitative_spanglish_accuracy",
+      "backend_status",
+      "failure_behavior"
+    ],
+    "vad": [
+      "speech_end_detection_latency",
+      "ram",
+      "model_load_time",
+      "qualitative_segment_quality",
+      "backend_status",
+      "failure_behavior"
+    ]
+  },
+  "results": [
+    {
+      "type": "asr",
+      "backend": "whisper.cpp",
+      "candidate": "tiny",
+      "hardware_profile": "cpu-portable",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local whisper.cpp model file is not present",
+      "next_local_action": "side-load the local tiny multilingual whisper.cpp model outside git and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "whisper.cpp",
+      "candidate": "base",
+      "hardware_profile": "cpu-portable",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local whisper.cpp model file is not present",
+      "next_local_action": "side-load the local base multilingual whisper.cpp model outside git and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "whisper.cpp",
+      "candidate": "small",
+      "hardware_profile": "cpu-portable",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local whisper.cpp model file is not present",
+      "next_local_action": "side-load the local small multilingual whisper.cpp model outside git and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "whisper.cpp",
+      "candidate": "medium-q5_0",
+      "hardware_profile": "cpu-high-accuracy",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local whisper.cpp model file is not present",
+      "next_local_action": "side-load the local medium-q5_0 whisper.cpp model outside git and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "whisper.cpp",
+      "candidate": "large-v3-turbo-q5_0",
+      "hardware_profile": "cpu-high-accuracy",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local whisper.cpp model file is not present",
+      "next_local_action": "side-load the local large-v3-turbo-q5_0 whisper.cpp model outside git and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "faster-whisper/CTranslate2",
+      "candidate": "large-v3-turbo-float16",
+      "hardware_profile": "nvidia-rtx-dev",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local faster-whisper or CTranslate2 model assets are not present",
+      "next_local_action": "side-load the local large-v3-turbo float16 assets outside git on the RTX benchmark machine and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "faster-whisper/CTranslate2",
+      "candidate": "large-v3-turbo-int8_float16",
+      "hardware_profile": "nvidia-rtx-dev",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local faster-whisper or CTranslate2 model assets are not present",
+      "next_local_action": "side-load the local large-v3-turbo int8_float16 assets outside git on the RTX benchmark machine and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "asr",
+      "backend": "OpenAI Whisper reference baseline",
+      "candidate": "local-reference-baseline",
+      "hardware_profile": "reference-baseline",
+      "status": "not yet runnable - local model missing",
+      "reason": "required local reference checkpoint is not present",
+      "next_local_action": "side-load the local reference Whisper baseline outside git and record checksum",
+      "speech_end_to_text_latency": "pending local benchmark",
+      "ram_or_vram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_spanglish_accuracy": "pending local benchmark",
+      "backend_status": "reference only",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "vad",
+      "backend": "WebRTC VAD",
+      "candidate": "default-fast-path",
+      "hardware_profile": "cpu-default",
+      "status": "not yet runnable - local VAD asset missing",
+      "reason": "required local VAD runtime asset or benchmark harness is not present",
+      "next_local_action": "prepare the local WebRTC VAD benchmark environment without runtime downloads and record exact package or binary source outside app execution",
+      "speech_end_detection_latency": "pending local benchmark",
+      "ram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_segment_quality": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    },
+    {
+      "type": "vad",
+      "backend": "Silero VAD",
+      "candidate": "accurate-noisy-room",
+      "hardware_profile": "cpu-accurate",
+      "status": "not yet runnable - local VAD asset missing",
+      "reason": "required local VAD model or runtime asset is not present",
+      "next_local_action": "side-load the local Silero VAD model or runtime asset outside git and record checksum",
+      "speech_end_detection_latency": "pending local benchmark",
+      "ram": "pending local benchmark",
+      "model_load_time": "pending local benchmark",
+      "qualitative_segment_quality": "pending local benchmark",
+      "backend_status": "candidate",
+      "failure_behavior": "must return local missing_model error and make no network attempt"
+    }
+  ],
+  "excluded_candidates": [
+    {
+      "name": "English-only Distil-Whisper default path",
+      "status": "intentionally excluded",
+      "reason": "not appropriate as the default path for technical Spanglish dictation"
+    }
+  ],
+  "default_selection_gate": "do not lock defaults until local benchmark evidence exists for CPU portable, CPU high accuracy, NVIDIA dev, and VAD profiles"
+}
