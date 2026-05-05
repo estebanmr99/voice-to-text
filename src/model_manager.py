@@ -1,0 +1,242 @@
+"""Local model registry and validation.
+
+ModelManager tracks available whisper.cpp GGML/GGUF models on the local
+filesystem.  It validates paths, optional checksums, and provides clear
+error messages when a model is missing — **never downloading automatically**.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# URLs for manual side-loading guidance (never fetched at runtime)
+_SIDeload_URLS: dict[str, str] = {
+    "base": (
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+        "ggml-base.bin"
+    ),
+    "small": (
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+        "ggml-small.bin"
+    ),
+}
+
+
+@dataclass
+class ModelInfo:
+    """Metadata for a single local whisper.cpp model."""
+
+    name: str
+    path: Path
+    size_mb: int
+    checksum_sha256: str | None = None
+    language: str = "auto"
+    parameters: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a plain dict (path stored as string)."""
+        d = asdict(self)
+        d["path"] = str(self.path)
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ModelInfo:
+        """Reconstruct from a plain dict."""
+        return cls(
+            name=data["name"],
+            path=Path(data["path"]),
+            size_mb=data["size_mb"],
+            checksum_sha256=data.get("checksum_sha256"),
+            language=data.get("language", "auto"),
+            parameters=data.get("parameters", {}),
+        )
+
+
+class ModelManager:
+    """Registry of local whisper.cpp models with validation.
+
+    The registry is persisted as JSON in *models_dir / "registry.json"*.
+    Pre-populated slots (``base``, ``small``) point to expected filenames
+    inside *models_dir*; users must side-load the actual GGML/GGUF files.
+    """
+
+    _DEFAULT_MODELS: list[dict[str, Any]] = [
+        {
+            "name": "base",
+            "filename": "ggml-base.bin",
+            "size_mb": 141,
+            "checksum_sha256": None,
+            "language": "auto",
+            "parameters": {"n_threads": 4},
+        },
+        {
+            "name": "small",
+            "filename": "ggml-small.bin",
+            "size_mb": 465,
+            "checksum_sha256": None,
+            "language": "auto",
+            "parameters": {"n_threads": 4},
+        },
+    ]
+
+    def __init__(self, models_dir: Path | None = None) -> None:
+        self._models_dir = (
+            models_dir or Path.home() / ".spanglish-dictation" / "models"
+        )
+        self._registry_path = self._models_dir / "registry.json"
+        self._models: dict[str, ModelInfo] = {}
+        self._load_registry()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _ensure_dir(self) -> None:
+        """Create the models directory if it does not exist."""
+        self._models_dir.mkdir(parents=True, exist_ok=True)
+
+    def _load_registry(self) -> None:
+        """Load registry from disk, or seed with default slots."""
+        if self._registry_path.exists():
+            try:
+                with self._registry_path.open("r", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+                for entry in payload.get("models", []):
+                    info = ModelInfo.from_dict(entry)
+                    self._models[info.name] = info
+                logger.debug(
+                    "Loaded %d model(s) from registry", len(self._models)
+                )
+                return
+            except (json.JSONDecodeError, OSError, KeyError) as exc:
+                logger.warning("Failed to load registry: %s", exc)
+                self._models.clear()
+
+        # Seed with default slots
+        for slot in self._DEFAULT_MODELS:
+            info = ModelInfo(
+                name=slot["name"],
+                path=self._models_dir / slot["filename"],
+                size_mb=slot["size_mb"],
+                checksum_sha256=slot["checksum_sha256"],
+                language=slot["language"],
+                parameters=dict(slot["parameters"]),
+            )
+            self._models[info.name] = info
+
+        self._save_registry()
+
+    def _save_registry(self) -> None:
+        """Persist the current registry to disk."""
+        self._ensure_dir()
+        payload = {
+            "models": [m.to_dict() for m in self._models.values()],
+        }
+        with self._registry_path.open("w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+
+    @staticmethod
+    def _sha256_of_file(path: Path) -> str:
+        """Compute the SHA-256 hex digest of *path*."""
+        h = hashlib.sha256()
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(8192), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def register_model(self, info: ModelInfo) -> None:
+        """Add or update a model in the registry."""
+        self._models[info.name] = info
+        self._save_registry()
+        logger.info("Registered model '%s' at %s", info.name, info.path)
+
+    def get_model(self, profile: str) -> ModelInfo:
+        """Resolve *profile* name to a :class:`ModelInfo`.
+
+        Raises:
+            KeyError: If the profile is not known.
+        """
+        try:
+            return self._models[profile]
+        except KeyError as exc:
+            raise KeyError(f"Unknown model profile: {profile}") from exc
+
+    def list_models(self) -> list[ModelInfo]:
+        """Return all registered models."""
+        return list(self._models.values())
+
+    def validate_model(self, info: ModelInfo) -> bool:
+        """Check whether *info* points to a readable model file.
+
+        If *info.checksum_sha256* is set, it is verified against the file.
+        """
+        if not info.path.exists():
+            logger.debug("Model file missing: %s", info.path)
+            return False
+
+        if not info.path.is_file():
+            logger.debug("Model path is not a file: %s", info.path)
+            return False
+
+        if info.checksum_sha256:
+            actual = self._sha256_of_file(info.path)
+            if actual.lower() != info.checksum_sha256.lower():
+                logger.warning(
+                    "Checksum mismatch for %s: expected %s, got %s",
+                    info.name,
+                    info.checksum_sha256,
+                    actual,
+                )
+                return False
+
+        return True
+
+    def get_default_model(self) -> ModelInfo | None:
+        """Return the first registered model whose file exists.
+
+        Returns ``None`` if no models are valid.
+        """
+        for info in self._models.values():
+            if self.validate_model(info):
+                return info
+        return None
+
+    def get_missing_model_error(self, profile: str) -> str:
+        """Return a human-readable error with side-load guidance.
+
+        **No network request is made.**  The message contains a URL that
+        the user can visit manually to download the model.
+        """
+        try:
+            info = self.get_model(profile)
+        except KeyError:
+            return (
+                f"Model profile '{profile}' is not registered. "
+                "Run the app once to seed the registry, or check your settings."
+            )
+
+        url = _SIDeload_URLS.get(profile, (
+            "https://huggingface.co/ggerganov/whisper.cpp/tree/main "
+            "(find the matching GGML/GGUF file)"
+        ))
+
+        return (
+            f"Model '{profile}' is not available locally.\n\n"
+            f"Expected file: {info.path}\n"
+            f"Expected size: ~{info.size_mb} MB\n\n"
+            f"Download the model manually from:\n  {url}\n\n"
+            f"Place the downloaded file at the expected path and restart the app.\n"
+            "No automatic download will be attempted (offline-first design)."
+        )
