@@ -14,7 +14,7 @@
 - [ ] **CORE-01**: Activate dictation via global hotkey with push-to-talk and toggle modes
 - [x] **CORE-02**: Capture microphone audio with local device selection, WASAPI-compatible backend
 - [x] **CORE-03**: Detect speech start/end using VAD with selectable profiles (WebRTC default, Silero accurate)
-- [ ] **CORE-04**: Transcribe offline using local quantized Whisper models via whisper.cpp or faster-whisper
+- [x] **CORE-04**: Transcribe offline using local quantized Whisper models via whisper.cpp or faster-whisper
 - [ ] **CORE-05**: Post-process transcripts with deterministic Spanglish technical glossary (no LLM rewriting)
 - [x] **CORE-06**: Paste final text into focused Windows app via clipboard + SendInput
 - [x] **CORE-07**: Preserve and restore previous clipboard contents where feasible
@@ -24,7 +24,7 @@
 ### Architecture
 
 - [ ] **MOD-01**: Backend-switchable architecture with explicit ports/adapters for ASR, VAD, paste, post-processing
-- [ ] **MOD-02**: Separate transcriber worker process to keep UI responsive and isolate model memory
+- [x] **MOD-02**: Separate transcriber worker process to keep UI responsive and isolate model memory
 
 ### Model Profiles
 

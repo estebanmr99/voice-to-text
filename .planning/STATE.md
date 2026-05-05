@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 02-02 audio+VAD complete. AudioCapture, SpeechDetector, and integration tests committed. Ready for 02-03 (transcriber) or 02-04 (paste).
-last_updated: "2026-05-05T05:43:13.034Z"
+stopped_at: 02-03 Transcriber complete. ModelManager, transcriber worker, and Transcriber orchestrator committed. Ready for 02-05 (wire dictation loop).
+last_updated: "2026-05-05T06:30:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -22,8 +22,8 @@ progress:
 ## Current Position
 
 **Phase:** 2 of 6 — MVP Offline Dictation
-**Status:** Executing — 02-01 complete, 02-02 complete, 02-04 complete, ready for 02-03 / 02-05
-**Progress:** [██████░░░░] 60%
+**Status:** Executing — 02-01 complete, 02-02 complete, 02-03 complete, 02-04 complete, ready for 02-05
+**Progress:** [████████░░] 80%
 
 ## Recent Decisions
 
@@ -42,13 +42,14 @@ progress:
 - 2026-05-04: Created programmatic fallback tray icon for Windows (no bundled PNG assets)
 - 2026-05-04: **02-02 audio+VAD complete** — AudioCapture (sounddevice/PortAudio), SpeechDetector (webrtcvad), integration tests committed
 - 2026-05-05: **02-04 PasteController complete** — SendInput/clipboard paste with backup/restore, automatic fallback, retry logic, and comprehensive mocked unit tests
+- 2026-05-05: **02-03 Transcriber complete** — ModelManager with JSON registry, pywhispercpp worker process via multiprocessing, crash recovery with backoff
 
 ## Pending Todos
 
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
-- Execute Phase 2 plans: 02-03 (transcriber) → 02-05 (wire loop)
-- Run pytest on 02-01, 02-02, and 02-04 tests once Python toolchain is available on execution environment
+- Execute Phase 2 plan: 02-05 (wire dictation loop)
+- Run pytest on 02-01, 02-02, 02-03, and 02-04 tests once Python toolchain is available on execution environment
 
 ## Blockers/Concerns
 
@@ -59,8 +60,8 @@ progress:
 ## Session Continuity
 
 Last session: 2026-05-05
-Stopped at: 02-04 PasteController complete. PasteController with SendInput and clipboard modes committed. Ready for 02-03 (transcriber) or 02-05 (wire loop).
-Resume file: .planning/phases/02-mvp-offline-dictation/02-04-SUMMARY.md
+Stopped at: 02-03 Transcriber complete. ModelManager, transcriber worker, and Transcriber orchestrator committed. Ready for 02-05 (wire dictation loop).
+Resume file: .planning/phases/02-mvp-offline-dictation/02-03-SUMMARY.md
 
 ## Task Status
 
@@ -69,7 +70,7 @@ Resume file: .planning/phases/02-mvp-offline-dictation/02-04-SUMMARY.md
 | 1. GSD tooling recovery | DONE | Canonical files hand-written; `gsd-sdk` CLI available for non-LLM queries |
 | 2. Architecture/privacy/licensing | DONE | — |
 | 3. ASR/VAD benchmark | PARTIAL | 2 of 10 ASR models available (base, small); VAD assets pending |
-| 4. MVP dictation loop | IN PROGRESS | 02-01 scaffold done; 02-02 audio+VAD done; 02-04 paste done; 02-03/02-05 next |
+| 4. MVP dictation loop | IN PROGRESS | 02-01 scaffold done; 02-02 audio+VAD done; 02-03 transcriber done; 02-04 paste done; 02-05 next |
 | 5. Model profiles | BLOCKED | Needs Task 4 |
 | 6. GUI/tray polish | BLOCKED | Needs Task 4 |
 | 7. Spanglish glossary | BLOCKED | Needs Task 4 |
@@ -77,7 +78,15 @@ Resume file: .planning/phases/02-mvp-offline-dictation/02-04-SUMMARY.md
 
 ## Next Action
 
-1. Run `/gsd-execute-phase 2` or execute `02-03-PLAN.md` directly to continue Phase 2
-2. Execute Wave 3: 02-03 (whisper.cpp transcriber worker) next
-3. Execute Wave 4: 02-05 (wire dictation loop) after 02-03
-4. MVP can use `ggml-base.bin` as default shipping model
+1. Run `/gsd-execute-phase 2` or execute `02-05-PLAN.md` directly to continue Phase 2
+2. Execute Wave 4: 02-05 (wire dictation loop)
+3. MVP can use `ggml-base.bin` as default shipping model
+
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 02-01 P1 | — | — | — |
+| Phase 02-02 P2 | — | — | — |
+| Phase 02-04 P4 | — | — | — |
+| Phase 02-03 P3 | 30min | 2 tasks | 5 files |
