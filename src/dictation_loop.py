@@ -53,6 +53,7 @@ class DictationLoop(QObject):
     text_pasted = Signal(str)
     transcription_ready = Signal(str)
     error_occurred = Signal(str)
+    _schedule_reset_signal = Signal(int)
 
     def __init__(
         self,
@@ -78,6 +79,7 @@ class DictationLoop(QObject):
         self._auto_reset_timer: QTimer = QTimer(self)
         self._auto_reset_timer.setSingleShot(True)
         self._auto_reset_timer.timeout.connect(self._auto_reset_to_idle)
+        self._schedule_reset_signal.connect(self._auto_reset_timer.start)
 
     # ------------------------------------------------------------------
     # State machine
@@ -253,7 +255,7 @@ class DictationLoop(QObject):
 
     def _schedule_reset(self, delay_ms: int = 2000) -> None:
         """Schedule automatic return to IDLE after *delay_ms*."""
-        self._auto_reset_timer.start(delay_ms)
+        self._schedule_reset_signal.emit(delay_ms)
 
     def _auto_reset_to_idle(self) -> None:
         self._auto_reset_timer.stop()
