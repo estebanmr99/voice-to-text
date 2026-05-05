@@ -8,7 +8,7 @@
 | 2 | MVP Offline Dictation | 5/5 | Complete | |
 | 3 | Model Profiles | 3/3 | Complete   | 2026-05-05 |
 | 4 | GUI & Tray Polish | 3/3 | Complete   | 2026-05-05 |
-| 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | Blocked |
+| 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | In Progress |
 | 6 | Packaging & Release | Windows installer, SBOM, license notices, GitHub release | REL-01–02 | Blocked |
 
 ---
@@ -151,10 +151,14 @@
 4. No translation or meaning change
 5. User-editable glossary with import/export
 
-**Plans:**
-- 05-01: Implement glossary normalization engine
-- 05-02: Add user glossary import/export
-- 05-03: Create fixture-driven tests for all phrases
+**Plans:** 3 plans
+
+**Wave 1** *(no dependencies)*
+- [ ] 05-01: Core PostProcessor, GlossaryStore, default glossary, and dictation loop wiring
+- [ ] 05-03: Fixture-driven tests for all success criteria and edge cases
+
+**Wave 2** *(depends on Wave 1)*
+- [ ] 05-02: User glossary import/export UI and persistence
 
 ---
 
@@ -179,6 +183,16 @@
 - 06-02: Generate SBOM and license bundle
 - 06-03: Write release documentation and privacy statement
 - 06-04: Prepare GitHub release with checksums
+
+### Phase 7: 5
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 6
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 7 to break down)
 
 ---
 
