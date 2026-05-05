@@ -178,11 +178,17 @@
 5. GitHub release docs explain model side-loading
 6. No bundled models or CUDA DLLs without approval
 
-**Plans:**
-- 06-01: Create portable zip packaging
-- 06-02: Generate SBOM and license bundle
-- 06-03: Write release documentation and privacy statement
-- 06-04: Prepare GitHub release with checksums
+**Plans:** 4 plans
+
+**Wave 1** *(no dependencies)*
+- [ ] 06-01: Portable packaging foundation and offline smoke checks
+- [ ] 06-02: SBOM and conservative license bundle generation
+
+**Wave 2** *(depends on Wave 1)*
+- [ ] 06-03: GitHub-ready release documentation, model side-loading, privacy, and MIT license
+
+**Wave 3** *(depends on Wave 2)*
+- [ ] 06-04: GitHub release workflow, checksums, and artifact verifier
 
 ### Phase 7: 5
 
