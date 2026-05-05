@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-05-05T15:58:34.986Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-05-05T16:46:49.910Z"
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -21,9 +21,9 @@ progress:
 
 ## Current Position
 
-**Phase:** 4 of 6 — GUI & Tray Polish
-**Status:** Planned — 3 plans ready (04-01 through 04-03)
-**Progress:** [██████████░░] 83%
+**Phase:** 5 of 6 — Spanglish Glossary
+**Status:** Ready — Phase 4 complete (04-01 through 04-03)
+**Progress:** [██████████] 100%
 
 ## Recent Decisions
 
@@ -44,13 +44,15 @@ progress:
 - 2026-05-05: **02-04 PasteController complete** — SendInput/clipboard paste with backup/restore, automatic fallback, retry logic, and comprehensive mocked unit tests
 - 2026-05-05: **02-03 Transcriber complete** — ModelManager with JSON registry, pywhispercpp worker process via multiprocessing, crash recovery with backoff
 - 2026-05-05: **02-05 Wire dictation loop complete** — PrivacyGuard with runtime network blocking, ShellIntegration with global hotkey and tray, DictationLoop orchestrating full audio→VAD→transcribe→paste, main.py wired
+- 2026-05-05: **04-01 Settings Dialog complete** — tray action opens full settings dialog with validation and persistence
+- 2026-05-05: **04-02 Confirmation Mode complete** — editable confirm-before-paste flow wired through DictationLoop and main
+- 2026-05-05: **04-03 Tray Polish complete** — grouped tray menu, state-aware actions, dismissible status panel, double-click reveal
 
 ## Pending Todos
 
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
 - Run pytest on all tests locally (Python toolchain unavailable in execution environment)
-- Execute Phase 4 plans (04-01 Settings Dialog, 04-02 Confirmation Mode, 04-03 Tray Polish)
 - Ready for Phase 5 (Spanglish Glossary) after Phase 4 complete
 
 ## Blockers/Concerns
@@ -61,7 +63,7 @@ progress:
 
 ## Session Continuity
 
-Last session: 2026-05-05T15:58:34.974Z
+Last session: 2026-05-05T16:46:49.898Z
 Stopped at: Phase 3 context gathered
 Resume file: None
 
@@ -74,16 +76,15 @@ Resume file: None
 | 3. ASR/VAD benchmark | PARTIAL | 2 of 10 ASR models available (base, small); VAD assets pending |
 | 4. MVP dictation loop | DONE | 02-01 through 02-05 complete; full push-to-talk loop wired |
 | 5. Model profiles | DONE | Phase 3 complete |
-| 6. GUI/tray polish | PLANNED | Phase 4 ready to execute |
+| 6. GUI/tray polish | DONE | 04-01 through 04-03 complete |
 | 7. Spanglish glossary | READY | Unblocked — can proceed |
 | 8. Packaging/release | READY | Unblocked pending Tasks 5-7 |
 
 ## Next Action
 
-1. Phase 4 planned — execute with `/gsd-execute-phase 4`
-2. Run `python src/main.py` to verify tray icon and hotkey registration
-3. Phase 5 (Spanglish Glossary) ready after Phase 4 complete
-4. MVP can use `ggml-base.bin` as default shipping model
+1. Execute Phase 5 with `/gsd-execute-phase 5`
+2. Run `python src/main.py` to verify tray icon, settings dialog, and confirmation mode UX
+3. MVP can use `ggml-base.bin` as default shipping model
 
 ## Session Handoff
 
@@ -99,3 +100,6 @@ Resume file: None
 | Phase 02-02 P2 | — | — | — |
 | Phase 02-04 P4 | — | — | — |
 | Phase 02-03 P3 | 30min | 2 tasks | 5 files |
+| Phase 04-01 P1 | 25min | 2 tasks | 3 files |
+| Phase 04-02 P2 | 20min | 3 tasks | 5 files |
+| Phase 04-03 P3 | 30min | 3 tasks | 3 files |

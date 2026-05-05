@@ -34,9 +34,9 @@
 
 ### GUI & UX
 
-- [ ] **GUI-01**: Tray menu exposes Start/Stop, Settings, Profile, Paste Mode, Exit
-- [ ] **GUI-02**: Confirmation/edit-before-paste mode as user-selectable option (immediate paste remains default)
-- [ ] **GUI-03**: Settings panel for hotkeys, audio device, model profile, VAD profile, glossary path
+- [x] **GUI-01**: Tray menu exposes Start/Stop, Settings, Profile, Paste Mode, Exit
+- [x] **GUI-02**: Confirmation/edit-before-paste mode as user-selectable option (immediate paste remains default)
+- [x] **GUI-03**: Settings panel for hotkeys, audio device, model profile, VAD profile, glossary path
 
 ### Release
 
@@ -82,8 +82,8 @@
 | PROF-01 | CPU portable profile | 3 | 03-01 | Defined |
 | PROF-02 | CPU high-accuracy profile | 3 | 03-01 | Defined |
 | PROF-03 | NVIDIA dev profile | 3 | 03-01 | Defined |
-| GUI-01 | Tray menu | 4 | 04-01 | Defined |
-| GUI-02 | Confirmation mode | 4 | 04-04 | Defined |
-| GUI-03 | Settings panel | 4 | 04-03 | Defined |
+| GUI-01 | Tray menu | 4 | 04-03 | Complete |
+| GUI-02 | Confirmation mode | 4 | 04-02 | Complete |
+| GUI-03 | Settings panel | 4 | 04-01 | Complete |
 | REL-01 | Open source / GitHub legal | 6 | 06-03 | Defined |
 | REL-02 | SBOM + license notices | 6 | 06-02 | Defined |

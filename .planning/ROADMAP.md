@@ -7,7 +7,7 @@
 | 1 | Planning & Architecture | Lock architecture, privacy, licensing, benchmark design | PRIV-01, PRIV-02, MOD-01, MOD-02, TEST-01, TEST-02 | In Progress |
 | 2 | MVP Offline Dictation | 5/5 | Complete | |
 | 3 | Model Profiles | 3/3 | Complete   | 2026-05-05 |
-| 4 | GUI & Tray Polish | Floating panel, settings, confirmation mode | GUI-01–03 | Blocked |
+| 4 | GUI & Tray Polish | 3/3 | Complete   | 2026-05-05 |
 | 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | Blocked |
 | 6 | Packaging & Release | Windows installer, SBOM, license notices, GitHub release | REL-01–02 | Blocked |
 
@@ -121,19 +121,19 @@
 4. Immediate paste remains default
 5. UI stays responsive during transcription
 
-**Status:** Planned — 3 plans ready
+**Status:** Complete — 3/3 plans executed
 
-**Plans:**
+**Plans:**3/3 plans complete
 - 04-01: Settings Dialog — comprehensive PySide6 dialog for all preferences, wired to tray
 - 04-02: Confirmation Mode Flow — editable confirmation dialog before paste, wired to dictation loop
 - 04-03: Tray & Status Panel Polish — grouped menu, state-aware actions, dismissible panel with profile info
 
 **Wave Structure**
 - **Wave 1** *(no dependencies)*
-  - [ ] 04-01: Settings Dialog
-  - [ ] 04-02: Confirmation Mode Flow
+  - [x] 04-01: Settings Dialog
+  - [x] 04-02: Confirmation Mode Flow
 - **Wave 2** *(blocked on Wave 1 completion)*
-  - [ ] 04-03: Tray & Status Panel Polish
+  - [x] 04-03: Tray & Status Panel Polish
 
 ---
 
@@ -195,16 +195,16 @@
 | CORE-05 | 5 | 05-01 |
 | CORE-06 | 2 | 02-04 |
 | CORE-07 | 2 | 02-04 |
-| CORE-08 | 4 | 04-02 |
+| CORE-08 | 4 | 04-03 |
 | CORE-09 | 2 | 02-01 |
 | MOD-01 | 1 | 01-02 |
 | MOD-02 | 1 | 01-02 |
 | PROF-01 | 3 | 03-01 |
 | PROF-02 | 3 | 03-01 |
 | PROF-03 | 3 | 03-01 |
-| GUI-01 | 4 | 04-01 |
-| GUI-02 | 4 | 04-04 |
-| GUI-03 | 4 | 04-03 |
+| GUI-01 | 4 | 04-03 |
+| GUI-02 | 4 | 04-02 |
+| GUI-03 | 4 | 04-01 |
 | TEST-01 | 1 | 01-02 |
 | TEST-02 | 1 | 01-03 |
 | REL-01 | 6 | 06-03 |
