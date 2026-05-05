@@ -29,6 +29,7 @@ from speech_detector import SpeechDetector
 from transcriber import Transcriber
 from paste_controller import PasteController
 from dictation_loop import DictationLoop
+from confirmation_dialog import ConfirmationDialog
 from shell_integration import ShellIntegration
 
 
@@ -176,6 +177,15 @@ def main() -> int:
     dictation_loop.state_changed.connect(
         lambda state, msg: shell.show_status_panel(state.value)
     )
+
+    def _on_transcription_ready(text: str) -> None:
+        accepted, edited_text = ConfirmationDialog.show_confirmation(parent=None, text=text)
+        if accepted:
+            dictation_loop.confirm_paste(edited_text)
+        else:
+            dictation_loop.cancel_paste()
+
+    dictation_loop.transcription_ready.connect(_on_transcription_ready)
 
     tray = shell.setup_tray()
 
