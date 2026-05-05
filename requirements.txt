@@ -1,0 +1,10 @@
+# Runtime dependencies — pinned for reproducible installs
+PySide6==6.8.0
+sounddevice==0.5.5
+numpy==1.26.4
+pywhispercpp==1.4.1
+webrtcvad-wheels==2.0.11
+pywin32==306
+
+# faster-whisper and ctranslate2 are dev-only; do not ship
+# Install with: pip install faster-whisper ctranslate2
