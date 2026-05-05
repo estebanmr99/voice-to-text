@@ -5,7 +5,7 @@
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
 | 1 | Planning & Architecture | Lock architecture, privacy, licensing, benchmark design | PRIV-01, PRIV-02, MOD-01, MOD-02, TEST-01, TEST-02 | In Progress |
-| 2 | MVP Offline Dictation | Build core dictation loop: tray, hotkey, audio, VAD, transcribe, paste | CORE-01–09 | Blocked |
+| 2 | MVP Offline Dictation | Build core dictation loop: tray, hotkey, audio, VAD, transcribe, paste | CORE-01–09 | Ready to execute |
 | 3 | Model Profiles | Add local model manager and hardware-specific profiles | PROF-01–03 | Blocked |
 | 4 | GUI & Tray Polish | Floating panel, settings, confirmation mode | GUI-01–03 | Blocked |
 | 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | Blocked |
@@ -59,12 +59,25 @@
 4. Privacy test passes (no network calls)
 5. App runs on Windows user account
 
-**Plans:**
-- 02-01: Scaffold Python project with PySide6 shell
-- 02-02: Implement AudioCapture + SpeechDetector (WebRTC VAD)
-- 02-03: Integrate whisper.cpp transcriber worker
-- 02-04: Implement PasteController with Win32 clipboard/SendInput
-- 02-05: Wire dictation loop and add error states
+**Plans:** 5 plans in 4 waves
+
+**Wave 1** *(no dependencies)*
+- [x] 02-01: Scaffold Python project with PySide6 shell — `pyproject.toml`, `SettingsStore`, `Diagnostics`, tray icon
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02: Implement AudioCapture + SpeechDetector (WebRTC VAD) — `sounddevice` capture, `webrtcvad` detection
+- [ ] 02-04: Implement PasteController with Win32 clipboard/SendInput — `SendInput` primary, clipboard fallback+restore
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-03: Integrate whisper.cpp transcriber worker — `pywhispercpp` in `multiprocessing.Process`, `ModelManager`
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 02-05: Wire dictation loop and add error states — `DictationLoop`, `ShellIntegration`, `PrivacyGuard`, hotkey wiring
+
+**Cross-cutting constraints:**
+- No runtime network (PRIV-01) — enforced by `PrivacyGuard` in 02-05
+- No admin required (CORE-09) — `RegisterHotKey` without elevation, user-mode clipboard access
+- Zero retention (PRIV-02) — audio buffers in-memory only, cleared after transcription
 
 ---
 

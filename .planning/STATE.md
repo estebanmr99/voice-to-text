@@ -6,9 +6,9 @@
 
 ## Current Position
 
-**Phase:** 1 of 6 — Planning and Architecture
-**Status:** Complete — Architecture locked, benchmarks designed, canonical files reconstructed, Python toolchain installed, models side-loaded
-**Progress:** [████████░░] 70%
+**Phase:** 2 of 6 — MVP Offline Dictation
+**Status:** Ready to execute — 5 plans created, research complete, no blockers
+**Progress:** [████████░░] 75%
 
 ## Recent Decisions
 
@@ -20,17 +20,19 @@
 - 2026-05-05: Installed Python 3.12.10 and pytest 9.0.3 via winget
 - 2026-05-05: Side-loaded whisper.cpp models: base (141MB) and small (465MB) for AMD Ryzen 5 3600 + RTX 2070 Super workstation
 - 2026-05-05: Created model registry with checksums, hardware profile recommendations, and faster-whisper download instructions
+- 2026-05-04: Completed Phase 2 research: validated PySide6 tray/hotkey, sounddevice, pywhispercpp, webrtcvad, pywin32 clipboard/SendInput, PyInstaller packaging
+- 2026-05-04: Created 5 Phase 2 execution plans (02-01 through 02-05) covering scaffold, audio+VAD, transcriber worker, paste controller, and dictation loop wiring
 
 ## Pending Todos
 
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
-- Begin Phase 2 MVP implementation
+- Execute Phase 2 plans: 02-01 (scaffold) → 02-02 (audio+VAD) + 02-04 (paste) → 02-03 (transcriber) → 02-05 (wire loop)
 
 ## Blockers/Concerns
 
-1. **No production code exists** — Greenfield repo, no src/ or tests/ yet
-2. **GSD `gsd-sdk init` requires Claude login** — Canonical files hand-written; future `/gsd-*` commands in OpenCode work fine
+1. **GSD `gsd-sdk init` requires Claude login** — Canonical files hand-written; future `/gsd-*` commands in OpenCode work fine
+2. **webrtcvad has no PyPI wheel for Windows** — May need `webrtcvad-wheels` community package or compile from source
 
 ## Session Continuity
 
@@ -53,6 +55,6 @@ Resume file: None (no .continue-here or HANDOFF.json)
 
 ## Next Action
 
-1. Run `/gsd-plan-phase 2` to create Phase 2 execution plans
-2. Or run `/gsd-discuss-phase 2` first to gather MVP context
+1. Run `/gsd-execute-phase 2` to begin executing Phase 2 plans
+2. Start with Wave 1: 02-01 (scaffold Python project with PySide6 shell)
 3. MVP can use `ggml-base.bin` as default shipping model
