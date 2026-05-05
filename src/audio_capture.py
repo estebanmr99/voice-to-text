@@ -104,7 +104,8 @@ class AudioCapture:
         """Stop capturing and release the PortAudio stream."""
         self._running = False
         if self._consumer_thread is not None:
-            self._consumer_thread.join(timeout=1.0)
+            if self._consumer_thread is not threading.current_thread():
+                self._consumer_thread.join(timeout=1.0)
             self._consumer_thread = None
         if self._stream is not None:
             self._stream.stop()
