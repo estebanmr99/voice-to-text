@@ -39,6 +39,10 @@ class ModelInfo:
     checksum_sha256: str | None = None
     language: str = "auto"
     parameters: dict[str, Any] = field(default_factory=dict)
+    backend: str = "whisper.cpp"
+    profile_compatibility: list[str] = field(default_factory=list)
+    source_url: str = ""
+    license_status: str = "candidate"
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dict (path stored as string)."""
@@ -49,6 +53,18 @@ class ModelInfo:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ModelInfo:
         """Reconstruct from a plain dict."""
+        profile_compatibility = data.get("profile_compatibility")
+        if not profile_compatibility:
+            profile_compatibility = [
+                "cpu-portable",
+                "cpu-high-accuracy",
+                "nvidia-dev",
+            ]
+
+        source_url = data.get("source_url")
+        if not source_url:
+            source_url = _SIDeload_URLS.get(data["name"], "")
+
         return cls(
             name=data["name"],
             path=Path(data["path"]),
@@ -56,7 +72,24 @@ class ModelInfo:
             checksum_sha256=data.get("checksum_sha256"),
             language=data.get("language", "auto"),
             parameters=data.get("parameters", {}),
+            backend=data.get("backend", "whisper.cpp"),
+            profile_compatibility=list(profile_compatibility),
+            source_url=source_url,
+            license_status=data.get("license_status", "candidate"),
         )
+
+
+@dataclass
+class Profile:
+    """Hardware profile metadata and model preference order."""
+
+    canonical_name: str
+    display_name: str
+    description: str
+    preferred_model: str
+    fallback_order: list[str]
+    backend_hint: str
+    shipping_default: bool = False
 
 
 class ModelManager:
@@ -75,6 +108,14 @@ class ModelManager:
             "checksum_sha256": None,
             "language": "auto",
             "parameters": {"n_threads": 4},
+            "backend": "whisper.cpp",
+            "profile_compatibility": [
+                "cpu-portable",
+                "cpu-high-accuracy",
+                "nvidia-dev",
+            ],
+            "source_url": _SIDeload_URLS["base"],
+            "license_status": "candidate",
         },
         {
             "name": "small",
@@ -83,6 +124,52 @@ class ModelManager:
             "checksum_sha256": None,
             "language": "auto",
             "parameters": {"n_threads": 4},
+            "backend": "whisper.cpp",
+            "profile_compatibility": [
+                "cpu-portable",
+                "cpu-high-accuracy",
+                "nvidia-dev",
+            ],
+            "source_url": _SIDeload_URLS["small"],
+            "license_status": "candidate",
+        },
+    ]
+
+    _DEFAULT_PROFILES: list[dict[str, Any]] = [
+        {
+            "canonical_name": "cpu-portable",
+            "display_name": "CPU Portable",
+            "description": (
+                "Fast, low-memory whisper.cpp model for Intel/AMD laptops "
+                "without GPU"
+            ),
+            "preferred_model": "base",
+            "fallback_order": ["small"],
+            "backend_hint": "whisper.cpp",
+            "shipping_default": True,
+        },
+        {
+            "canonical_name": "cpu-high-accuracy",
+            "display_name": "CPU High Accuracy",
+            "description": (
+                "Larger whisper.cpp model with better accuracy, slower on CPU"
+            ),
+            "preferred_model": "small",
+            "fallback_order": ["base"],
+            "backend_hint": "whisper.cpp",
+            "shipping_default": False,
+        },
+        {
+            "canonical_name": "nvidia-dev",
+            "display_name": "NVIDIA Dev",
+            "description": (
+                "Development/benchmark profile for faster-whisper on "
+                "NVIDIA RTX (dev only)"
+            ),
+            "preferred_model": "small",
+            "fallback_order": ["base"],
+            "backend_hint": "faster-whisper",
+            "shipping_default": False,
         },
     ]
 
@@ -128,6 +215,21 @@ class ModelManager:
                 checksum_sha256=slot["checksum_sha256"],
                 language=slot["language"],
                 parameters=dict(slot["parameters"]),
+                backend=slot.get("backend", "whisper.cpp"),
+                profile_compatibility=list(
+                    slot.get(
+                        "profile_compatibility",
+                        [
+                            "cpu-portable",
+                            "cpu-high-accuracy",
+                            "nvidia-dev",
+                        ],
+                    )
+                ),
+                source_url=slot.get(
+                    "source_url", _SIDeload_URLS.get(slot["name"], "")
+                ),
+                license_status=slot.get("license_status", "candidate"),
             )
             self._models[info.name] = info
 
