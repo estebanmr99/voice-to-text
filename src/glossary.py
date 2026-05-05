@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -141,6 +142,92 @@ class GlossaryStore:
                 errors.append(f"{idx_label}: missing or empty 'output' field")
 
         return errors
+
+    # ------------------------------------------------------------------
+    # Import / Export
+    # ------------------------------------------------------------------
+
+    def import_glossary(self, source_path: Path) -> list[str]:
+        """Import a glossary JSON file as the user glossary.
+
+        Validates the file, then copies it to the user glossary location
+        (:attr:`_user_path`). Returns an empty list on success, or a list
+        of error strings on failure.
+
+        The imported entries will override defaults on conflict when
+        :meth:`load` is next called.
+        """
+        # Check file exists and is readable
+        if not source_path.exists():
+            return [f"File not found: {source_path}"]
+
+        try:
+            with source_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except json.JSONDecodeError:
+            return ["Invalid JSON in glossary file"]
+        except OSError as exc:
+            return [f"Cannot read file: {exc}"]
+
+        # Validate schema
+        entries = data.get("entries", []) if isinstance(data, dict) else []
+        if not isinstance(data, dict) or not isinstance(entries, list):
+            return ['Glossary file must have an "entries" list']
+
+        errors = self.validate(entries)
+        if errors:
+            return errors
+
+        # Copy to user glossary location
+        if self._user_path is None:
+            return ["No user glossary path configured"]
+
+        try:
+            self._user_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._user_path.open("w", encoding="utf-8") as fh:
+                json.dump(data, fh, indent=2, ensure_ascii=False)
+                fh.write("\n")
+        except OSError as exc:
+            return [f"Failed to write user glossary: {exc}"]
+
+        return []
+
+    def export_glossary(self, dest_path: Path) -> None:
+        """Export the current merged glossary to a JSON file.
+
+        Writes defaults + user entries in the same schema as
+        ``default_glossary.json`` for round-trip compatibility.
+
+        Creates parent directories if needed. Raises :class:`OSError`
+        only on write failure.
+        """
+        entries = self.get_entries_as_dicts()
+        data: dict[str, Any] = {
+            "entries": entries,
+            "version": 1,
+            "description": "Spanglish Dictation glossary export",
+        }
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        with dest_path.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+
+    def get_entries_as_dicts(self) -> list[dict[str, Any]]:
+        """Return current merged entries as a list of dicts.
+
+        Each dict has ``"input"``, ``"output"``, and optionally ``"context"``
+        (omitted when empty).
+        """
+        result: list[dict[str, Any]] = []
+        for entry in self.load():
+            item: dict[str, Any] = {
+                "input": entry.input,
+                "output": entry.output,
+            }
+            if entry.context:
+                item["context"] = entry.context
+            result.append(item)
+        return result
 
     # ------------------------------------------------------------------
     # Factory
