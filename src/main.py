@@ -22,6 +22,8 @@ from PySide6.QtWidgets import QApplication
 from diagnostics import Diagnostics
 from settings_store import SettingsStore
 from model_manager import ModelManager
+from hardware_detector import detect_hardware
+from profile_resolver import resolve_profile
 from audio_capture import AudioCapture
 from speech_detector import SpeechDetector
 from transcriber import Transcriber
@@ -129,17 +131,43 @@ def main() -> int:
         icon = QIcon(_create_fallback_icon())
     tray.setIcon(icon)
 
-    # Check for missing model and show guidance
-    default_model = model_manager.get_default_model()
-    if default_model is None:
+    # Detect hardware and resolve profile/model selection
+    hardware_info = detect_hardware()
+    diagnostics.event(
+        "hardware_detected",
+        cpu_cores=hardware_info.cpu_logical_cores,
+        has_nvidia=hardware_info.has_nvidia_gpu,
+    )
+
+    resolution = resolve_profile(settings, model_manager, hardware_info)
+
+    if resolution.model_info is None:
         shell.show_notification(
             "Spanglish Dictation",
-            "No model found. See side-load instructions in settings.",
+            (
+                f"No model available for profile '{resolution.profile_used}'. "
+                f"{resolution.error_message}"
+            ),
         )
-        diagnostics.event("model_missing_at_startup")
+        diagnostics.event(
+            "model_missing_at_startup",
+            profile=resolution.profile_used,
+            error=resolution.error_message[:100],
+        )
     else:
-        transcriber.start(default_model)
-        diagnostics.event("model_loaded", model=default_model.name)
+        transcriber.start(resolution.model_info)
+        diagnostics.event(
+            "model_loaded",
+            model=resolution.model_info.name,
+            profile=resolution.profile_used,
+            fallback_applied=resolution.fallback_applied,
+        )
+        if resolution.advisory_message:
+            shell.show_notification("Spanglish Dictation", resolution.advisory_message)
+            diagnostics.event(
+                "profile_advisory",
+                message=resolution.advisory_message[:100],
+            )
 
     diagnostics.event("tray_shown")
     return app.exec()
