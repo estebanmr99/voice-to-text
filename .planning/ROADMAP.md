@@ -182,7 +182,7 @@
 
 **Wave 1** *(no dependencies)*
 - [x] 06-01: Portable packaging foundation and offline smoke checks
-- [ ] 06-02: SBOM and conservative license bundle generation
+- [x] 06-02: SBOM and conservative license bundle generation
 
 **Wave 2** *(depends on Wave 1)*
 - [ ] 06-03: GitHub-ready release documentation, model side-loading, privacy, and MIT license
