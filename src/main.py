@@ -192,7 +192,7 @@ def main() -> int:
     # Wire tray Start / Stop actions to dictation loop
     menu = tray.contextMenu()
     for action in menu.actions():
-        text = action.text()
+        text = action.text().replace("&", "")
         if text == "Start Dictation":
             action.triggered.connect(dictation_loop.start)
         elif text == "Stop Dictation":

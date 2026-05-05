@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QPushButton,
 )
 from settings_dialog import SettingsDialog
 
@@ -103,6 +105,8 @@ class ShellIntegration(QObject):
         self._status_panel: QWidget | None = None
         self._status_label: QLabel | None = None
         self._auto_hide_timer: QTimer | None = None
+        self._action_start: QAction | None = None
+        self._action_stop: QAction | None = None
 
         self._event_filter = HotkeyNativeEventFilter()
         self._event_filter.hotkey_pressed.connect(self.hotkey_pressed)
@@ -153,10 +157,11 @@ class ShellIntegration(QObject):
 
         menu = QMenu()
 
-        action_start = QAction("Start Dictation", menu)
-        action_stop = QAction("Stop Dictation", menu)
-        action_settings = QAction("Settings", menu)
-        action_exit = QAction("Exit", menu)
+        action_start = QAction("&Start Dictation", menu)
+        action_stop = QAction("St&op Dictation", menu)
+        action_settings = QAction("&Settings", menu)
+        action_exit = QAction("E&xit", menu)
+        action_show_panel = QAction("Show Status Panel", menu)
 
         action_stop.setEnabled(False)
 
@@ -190,13 +195,17 @@ class ShellIntegration(QObject):
         action_start.triggered.connect(lambda: self._log_event("tray_start_clicked"))
         action_stop.triggered.connect(lambda: self._log_event("tray_stop_clicked"))
         action_settings.triggered.connect(self._on_settings)
+        action_show_panel.triggered.connect(lambda: self.show_status_panel("idle"))
         action_exit.triggered.connect(self._on_exit)
 
+        self._action_start = action_start
+        self._action_stop = action_stop
+
+        menu.addSection("Dictation")
         menu.addAction(action_start)
         menu.addAction(action_stop)
-        menu.addSeparator()
+        menu.addSection("Mode")
         menu.addMenu(paste_mode_menu)
-        menu.addSeparator()
 
         if self._model_manager is not None:
             profile_menu = QMenu("Profile", menu)
@@ -225,16 +234,20 @@ class ShellIntegration(QObject):
                     self.profile_changed.emit(new_profile)
 
             profile_group.triggered.connect(_on_profile_changed)
+            menu.addSection("Profile")
             menu.addMenu(profile_menu)
-            menu.addSeparator()
 
+        menu.addSection("Tools")
         menu.addAction(action_settings)
-        menu.addSeparator()
+        menu.addAction(action_show_panel)
+        menu.addSection("Exit")
         menu.addAction(action_exit)
 
         self._tray_icon.setContextMenu(menu)
         self._tray_icon.activated.connect(self._on_tray_activated)
         self._tray_icon.show()
+        self.update_profile_tooltip("")
+        self.update_action_state("idle")
         self._log_event("tray_shown")
         return self._tray_icon
 
@@ -254,10 +267,19 @@ class ShellIntegration(QObject):
             self._tray_icon.showMessage(title, message, QSystemTrayIcon.Information, 3000)
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason == QSystemTrayIcon.DoubleClick:
+            self.show_status_panel("idle")
+            return
         if reason == QSystemTrayIcon.Trigger and self._tray_icon is not None:
             menu = self._tray_icon.contextMenu()
             if menu is not None:
                 menu.popup(QCursor.pos())
+
+    def update_action_state(self, state: str) -> None:
+        if self._action_start is not None:
+            self._action_start.setEnabled(state in ("idle", "ready", "error"))
+        if self._action_stop is not None:
+            self._action_stop.setEnabled(state in ("listening", "processing"))
 
     def _on_exit(self) -> None:
         self._log_event("app_exited")
@@ -285,15 +307,16 @@ class ShellIntegration(QObject):
             self._status_panel = self._create_status_panel()
 
         self.status_changed.emit(status)
+        self.update_action_state(status)
 
         color = self._STATUS_COLORS.get(status, "#9E9E9E")
         label = self._STATUS_LABELS.get(status, status.capitalize())
         if self._model_manager is not None:
             try:
                 profile = self._model_manager.get_profile(self._settings.model_profile)
-                label = f"{label} — {profile.display_name}"
+                label = f"{label} | {profile.display_name}"
             except KeyError:
-                pass
+                label = f"{label} | {self._settings.model_profile}"
 
         if self._status_label is not None:
             self._status_label.setText(label)
@@ -303,7 +326,7 @@ class ShellIntegration(QObject):
 
         panel = self._status_panel
         panel.setStyleSheet(
-            f"background-color: {color}; border-radius: 8px; padding: 8px;"
+            f"background-color: {color}; border-radius: 10px; padding: 10px;"
         )
         panel.show()
         panel.raise_()
@@ -320,6 +343,8 @@ class ShellIntegration(QObject):
             self._auto_hide_timer.stop()
 
     def _hide_status_panel(self) -> None:
+        if self._auto_hide_timer is not None and self._auto_hide_timer.isActive():
+            self._auto_hide_timer.stop()
         if self._status_panel is not None:
             self._status_panel.hide()
 
@@ -336,22 +361,38 @@ class ShellIntegration(QObject):
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 8, 12, 8)
 
+        top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(0, 0, 0, 0)
+
         self._status_label = QLabel("Idle")
         self._status_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self._status_label)
+        self._status_label.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        top_layout.addWidget(self._status_label, stretch=1)
+
+        close_btn = QPushButton("x", panel)
+        close_btn.setFlat(True)
+        close_btn.setStyleSheet("color: white; font-weight: bold; font-size: 12px;")
+        close_btn.setMaximumWidth(24)
+        close_btn.setMaximumHeight(24)
+        close_btn.clicked.connect(self._hide_status_panel)
+        top_layout.addWidget(close_btn)
+
+        layout.addLayout(top_layout)
 
         shadow = QGraphicsDropShadowEffect(panel)
-        shadow.setBlurRadius(16)
+        shadow.setBlurRadius(20)
         shadow.setColor(QColor(0, 0, 0, 160))
-        shadow.setOffset(0, 4)
+        shadow.setOffset(0, 6)
         panel.setGraphicsEffect(shadow)
 
         # Position bottom-right of primary screen
         screen = QApplication.primaryScreen()
         if screen is not None:
             geo = screen.availableGeometry()
-            panel.resize(160, 50)
-            panel.move(geo.right() - 180, geo.bottom() - 80)
+            panel.resize(220, 60)
+            x = geo.right() - panel.width() - 20
+            y = geo.bottom() - panel.height() - 20
+            panel.move(x, y)
 
         return panel
 
