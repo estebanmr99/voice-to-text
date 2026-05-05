@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-05T05:00:00Z",
+  "phase": 2,
+  "phase_name": "MVP Offline Dictation",
+  "phase_dir": ".planning/phases/02-mvp-offline-dictation",
+  "plan": 5,
+  "task": 5,
+  "total_tasks": 5,
+  "status": "complete",
+  "completed_tasks": [
+    {"id": 1, "name": "02-01: Scaffold Python project with PySide6 shell", "status": "done", "commit": "11d329d"},
+    {"id": 2, "name": "02-02: Implement AudioCapture + SpeechDetector (WebRTC VAD)", "status": "done", "commit": "c1d5810"},
+    {"id": 3, "name": "02-03: Integrate whisper.cpp transcriber worker", "status": "done", "commit": "d1d4fec"},
+    {"id": 4, "name": "02-04: Implement PasteController with Win32 clipboard/SendInput", "status": "done", "commit": "84d04cc"},
+    {"id": 5, "name": "02-05: Wire dictation loop and add error states", "status": "done", "commit": "d7e6941"}
+  ],
+  "remaining_tasks": [
+    {"id": 1, "name": "Phase 3: Model Profiles", "status": "not_started"},
+    {"id": 2, "name": "Phase 4: GUI & Tray Polish", "status": "not_started"},
+    {"id": 3, "name": "Phase 5: Spanglish Glossary", "status": "not_started"},
+    {"id": 4, "name": "Phase 6: Packaging & Release", "status": "not_started"}
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Install Microsoft Visual C++ Build Tools for webrtcvad-wheels compilation", "context": "Optional but recommended for production VAD accuracy. Not required for development/testing due to fallback VAD.", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Make webrtcvad optional with fallback energy-based VAD", "rationale": "webrtcvad-wheels requires VC++ Build Tools (~6GB) on Windows. Fallback allows immediate development without this barrier.", "phase": 2},
+    {"decision": "Injectable vad_backend parameter in SpeechDetector", "rationale": "Enables mocking without importing webrtcvad, supports future VAD backends (Silero)", "phase": 2},
+    {"decision": "No pytest-qt dependency", "rationale": "Minimize dev dependencies. Manual QApplication fixture is sufficient.", "phase": 2},
+    {"decision": "Programmatic tray icon fallback (QPainter)", "rationale": "Avoid bundled PNG assets in git. Icon draws at runtime.", "phase": 2},
+    {"decision": "Model assets not in git; registry stores expected paths", "rationale": "Model binaries are large. Registry provides checksums and side-load guidance without network download.", "phase": 2}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run /gsd-plan-phase 3 to plan Model Profiles (hardware detection, backend switching) OR /gsd-plan-phase 4 for GUI polish.",
+  "context_notes": "Phase 2 MVP is solid: 150 tests pass, all 5 plans complete, working push-to-talk loop from hotkey to paste. The architecture is clean with 10 modules and clear interfaces. ModelManager + Transcriber are ready for Phase 3 profile expansion. ShellIntegration is ready for Phase 4 settings dialog. The user's workstation has an RTX 2070 Super that Phase 3 could leverage with faster-whisper/CTranslate2 backend."
+}
