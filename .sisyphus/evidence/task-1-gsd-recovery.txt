@@ -1,0 +1,14 @@
+Task 1 evidence
+Timestamp: 2026-05-04 20:07
+
+Commands:
+- where.exe gsd-sdk -> no executable found on PATH.
+- where.exe node -> C:\nvm4w\nodejs\node.exe.
+- where.exe npm -> C:\nvm4w\nodejs\npm and C:\nvm4w\nodejs\npm.cmd.
+- npm config get prefix -> C:\nvm4w\nodejs.
+- npx.cmd get-shit-done-cc@latest --opencode --global --sdk -> installed OpenCode GSD assets, but where.exe gsd-sdk still failed.
+- npx.cmd get-shit-done-cc@latest --opencode --global -> same result.
+
+Outcome:
+- GSD tooling was installed for OpenCode, but the shell still cannot resolve gsd-sdk.
+- Recovery blocked on shell PATH exposure or OpenCode-native invocation.
