@@ -106,6 +106,8 @@ class TestBlockedReleasePaths:
 # ------------------------------------------------------------------
 
 SPEC_PATH = Path(__file__).resolve().parent.parent / "packaging" / "spanglish-dictation.spec"
+BUILD_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "build_portable.ps1"
+SMOKE_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "smoke_offline.ps1"
 
 
 class TestPackagingSpec:
@@ -121,3 +123,43 @@ class TestPackagingSpec:
         assert "default_glossary.json" in text, (
             "spec must bundle data/default_glossary.json"
         )
+
+
+# ------------------------------------------------------------------
+# Build script validation
+# ------------------------------------------------------------------
+
+
+class TestBuildScript:
+    def test_build_script_exists(self) -> None:
+        assert BUILD_SCRIPT.is_file(), f"{BUILD_SCRIPT} not found"
+
+    def test_build_script_blocks_forbidden_artifacts(self) -> None:
+        text = BUILD_SCRIPT.read_text(encoding="utf-8")
+        for token in ("cudnn*.dll", "cublas*.dll", "cudart*.dll",
+                       "models*", ".bin", ".gguf"):
+            assert token in text.replace('"', "").replace("{", "").replace("}", ""), (
+                f"build script must block '{token}'"
+            )
+
+    def test_build_script_contains_version_zip_name(self) -> None:
+        text = BUILD_SCRIPT.read_text(encoding="utf-8")
+        assert "spanglish-dictation-portable-$Version.zip" in text
+
+    def test_build_script_has_skip_build_switch(self) -> None:
+        text = BUILD_SCRIPT.read_text(encoding="utf-8")
+        assert "SkipBuild" in text
+
+
+class TestSmokeScript:
+    def test_smoke_script_exists(self) -> None:
+        assert SMOKE_SCRIPT.is_file(), f"{SMOKE_SCRIPT} not found"
+
+    def test_smoke_script_runs_privacy_guard_tests(self) -> None:
+        text = SMOKE_SCRIPT.read_text(encoding="utf-8")
+        assert "test_privacy_guard.py" in text
+        assert "test_release_packaging.py" in text
+
+    def test_smoke_script_references_optional_verifier(self) -> None:
+        text = SMOKE_SCRIPT.read_text(encoding="utf-8")
+        assert "verify_release_artifacts.py" in text
