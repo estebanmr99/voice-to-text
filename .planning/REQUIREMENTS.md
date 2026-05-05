@@ -7,7 +7,7 @@
 - [x] **PRIV-01**: App must never make runtime network calls for ASR, telemetry, model downloads, updates, or any purpose
 - [ ] **PRIV-02**: No retained audio or transcripts by default; diagnostics are redacted and local-only
 - [x] **TEST-01**: Privacy tests must fail if network calls (socket, HTTP, telemetry, download) are introduced
-- [ ] **TEST-02**: Missing or corrupt local model paths return local errors without network attempts
+- [x] **TEST-02**: Missing or corrupt local model paths return local errors without network attempts
 
 ### Core Dictation
 
@@ -28,9 +28,9 @@
 
 ### Model Profiles
 
-- [ ] **PROF-01**: CPU portable profile with whisper.cpp quantized model for Intel/AMD laptops without GPU
-- [ ] **PROF-02**: CPU high-accuracy profile with larger whisper.cpp quantized model
-- [ ] **PROF-03**: NVIDIA dev profile with faster-whisper/CTranslate2 for RTX development/benchmark
+- [x] **PROF-01**: CPU portable profile with whisper.cpp quantized model for Intel/AMD laptops without GPU
+- [x] **PROF-02**: CPU high-accuracy profile with larger whisper.cpp quantized model
+- [x] **PROF-03**: NVIDIA dev profile with faster-whisper/CTranslate2 for RTX development/benchmark
 
 ### GUI & UX
 
