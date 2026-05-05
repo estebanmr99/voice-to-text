@@ -130,7 +130,7 @@ def main() -> int:
     diagnostics = Diagnostics()
     diagnostics.event("app_started")
 
-    model_manager = ModelManager()
+    model_manager = ModelManager(models_dir=Path(__file__).resolve().parent.parent / "models")
     audio_capture = AudioCapture(device_index=settings.audio_device_index)
     speech_detector = SpeechDetector()
     transcriber = Transcriber(model_manager)
