@@ -181,7 +181,7 @@
 **Plans:** 4 plans
 
 **Wave 1** *(no dependencies)*
-- [ ] 06-01: Portable packaging foundation and offline smoke checks
+- [x] 06-01: Portable packaging foundation and offline smoke checks
 - [ ] 06-02: SBOM and conservative license bundle generation
 
 **Wave 2** *(depends on Wave 1)*
