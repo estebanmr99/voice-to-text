@@ -133,6 +133,56 @@ class TestAudioFlow:
 
         mock_deps["paste_controller"].paste.assert_not_called()
 
+    def test_confirmation_mode_emits_transcription_ready(self, loop, mock_deps, qapp):
+        from speech_detector import VADEvent
+
+        mock_deps["settings"].paste_mode = "confirmation"
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        mock_deps["transcriber"].transcribe.return_value = "raw text"
+
+        received = []
+        loop.transcription_ready.connect(lambda t: received.append(t))
+        loop._on_audio_block(frame)
+
+        assert received == ["raw text"]
+        assert loop.state is DictationState.READY
+
+    def test_confirmation_mode_does_not_paste_automatically(self, loop, mock_deps, qapp):
+        from speech_detector import VADEvent
+
+        mock_deps["settings"].paste_mode = "confirmation"
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        mock_deps["transcriber"].transcribe.return_value = "raw text"
+
+        loop._on_audio_block(frame)
+        mock_deps["paste_controller"].paste.assert_not_called()
+
+    def test_confirm_paste_uses_edited_text(self, loop, mock_deps):
+        loop.confirm_paste("edited text")
+        mock_deps["paste_controller"].paste.assert_called_once_with("edited text")
+        assert loop.state is DictationState.READY
+
+    def test_cancel_paste_returns_idle(self, loop):
+        loop.cancel_paste()
+        assert loop.state is DictationState.IDLE
+
+    def test_immediate_mode_still_pastes(self, loop, mock_deps, qapp):
+        from speech_detector import VADEvent
+
+        mock_deps["settings"].paste_mode = "immediate"
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+        mock_deps["transcriber"].transcribe.return_value = "hello world"
+        mock_deps["paste_controller"].paste.return_value = True
+
+        loop._on_audio_block(frame)
+        mock_deps["paste_controller"].paste.assert_called_once_with("hello world")
+
 
 class TestErrorHandling:
     def test_audio_capture_failure(self, loop, mock_deps):

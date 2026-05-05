@@ -50,6 +50,7 @@ class DictationLoop(QObject):
 
     state_changed = Signal(object, str)
     text_pasted = Signal(str)
+    transcription_ready = Signal(str)
     error_occurred = Signal(str)
 
     def __init__(
@@ -190,6 +191,11 @@ class DictationLoop(QObject):
             self._schedule_reset()
             return
 
+        if self._settings.paste_mode == "confirmation":
+            self._set_state(DictationState.READY, "Review before paste")
+            self.transcription_ready.emit(text)
+            return
+
         # Paste
         try:
             ok = self._paste_controller.paste(text)
@@ -205,6 +211,27 @@ class DictationLoop(QObject):
         self._set_state(DictationState.READY, "Dictation complete")
         self.text_pasted.emit(text)
         self._schedule_reset()
+
+    def confirm_paste(self, text: str) -> None:
+        """Paste edited text and transition to READY."""
+        try:
+            ok = self._paste_controller.paste(text)
+        except Exception as exc:
+            logger.exception("Paste failed: %s", exc)
+            self._handle_error("paste", "Could not paste. Clipboard may be locked.")
+            return
+
+        if not ok:
+            self._handle_error("paste", "Could not paste. Clipboard may be locked.")
+            return
+
+        self._set_state(DictationState.READY, "Dictation complete")
+        self.text_pasted.emit(text)
+        self._schedule_reset(delay_ms=2000)
+
+    def cancel_paste(self) -> None:
+        """Discard transcription and return to IDLE."""
+        self._set_state(DictationState.IDLE)
 
     # ------------------------------------------------------------------
     # Error handling
