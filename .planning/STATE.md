@@ -83,10 +83,16 @@ Resume file: None (phase complete)
 
 ## Next Action
 
-1. Run pytest locally to validate all 11 test modules
+1. Phase 2 complete — resume with `/gsd-resume-work` or start Phase 3/4
 2. Run `python src/main.py` to verify tray icon and hotkey registration
 3. Proceed to Phase 3 (Model Profiles) or Phase 4 (GUI & Tray Polish)
 4. MVP can use `ggml-base.bin` as default shipping model
+
+## Session Handoff
+
+- Handoff file: `.planning/phases/02-mvp-offline-dictation/.continue-here.md`
+- Structured state: `.planning/HANDOFF.json`
+- Status: **PAUSED** — Phase 2 complete, ready for next phase
 
 ## Performance Metrics
 
