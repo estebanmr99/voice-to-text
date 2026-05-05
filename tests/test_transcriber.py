@@ -8,6 +8,9 @@ no actual subprocesses are spawned.
 from __future__ import annotations
 
 import multiprocessing
+import sys
+import time
+from types import ModuleType
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +19,14 @@ import pytest
 
 from model_manager import ModelInfo, ModelManager
 from transcriber import Transcriber, TranscriptionError
+
+# Create a fake pywhispercpp module so tests can patch it without installing it.
+_fake_pywhispercpp = ModuleType("pywhispercpp")
+_fake_pywhispercpp_model = ModuleType("pywhispercpp.model")
+_fake_pywhispercpp_model.Model = object  # placeholder for patching
+_fake_pywhispercpp.model = _fake_pywhispercpp_model
+sys.modules.setdefault("pywhispercpp", _fake_pywhispercpp)
+sys.modules.setdefault("pywhispercpp.model", _fake_pywhispercpp_model)
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +250,7 @@ class TestTranscriberWorker:
         audio_q.get.side_effect = [Exception("empty"), Exception("empty")]
         cancel_event.is_set.side_effect = [False, True]
 
-        with patch("transcriber_worker.Model") as mock_model_cls:
+        with patch("pywhispercpp.model.Model") as mock_model_cls:
             mock_model_cls.return_value = MagicMock()
             run_worker(audio_q, result_q, cancel_event, "/fake/model.bin")
 
@@ -258,7 +269,7 @@ class TestTranscriberWorker:
         short_audio = np.ones(100, dtype=np.int16)
         audio_q.get.return_value = (short_audio, 16000)
 
-        with patch("transcriber_worker.Model") as mock_model_cls:
+        with patch("pywhispercpp.model.Model") as mock_model_cls:
             mock_model_cls.return_value = MagicMock()
             run_worker(audio_q, result_q, cancel_event, "/fake/model.bin")
 
@@ -281,7 +292,7 @@ class TestTranscriberWorker:
         mock_model = MagicMock()
         mock_model.transcribe.return_value = [mock_segment]
 
-        with patch("transcriber_worker.Model") as mock_model_cls:
+        with patch("pywhispercpp.model.Model") as mock_model_cls:
             mock_model_cls.return_value = mock_model
             run_worker(audio_q, result_q, cancel_event, "/fake/model.bin")
 
@@ -304,7 +315,7 @@ class TestTranscriberWorker:
         mock_model = MagicMock()
         mock_model.transcribe.side_effect = RuntimeError("inference failed")
 
-        with patch("transcriber_worker.Model") as mock_model_cls:
+        with patch("pywhispercpp.model.Model") as mock_model_cls:
             mock_model_cls.return_value = mock_model
             run_worker(audio_q, result_q, cancel_event, "/fake/model.bin")
 
@@ -321,14 +332,10 @@ class TestTranscriberWorker:
         result_q = MagicMock()
         cancel_event = MagicMock()
 
-        with patch.dict("sys.modules", {"pywhispercpp": None}):
-            with patch(
-                "transcriber_worker.Model",
-                side_effect=ImportError("No module named pywhispercpp"),
-            ):
-                run_worker(
-                    audio_q, result_q, cancel_event, "/fake/model.bin"
-                )
+        with patch.dict("sys.modules", {"pywhispercpp": None, "pywhispercpp.model": None}):
+            run_worker(
+                audio_q, result_q, cancel_event, "/fake/model.bin"
+            )
 
         result_q.put.assert_called_once()
         args, _ = result_q.put.call_args
@@ -348,7 +355,7 @@ class TestTranscriberCrashRecovery:
     ) -> None:
         transcriber._model_info = valid_model_info
         transcriber._restart_attempts = 3
-        transcriber._last_restart_time = 0.0  # force delay
+        transcriber._last_restart_time = time.time()  # recent restart, delay not elapsed
 
         with patch.object(transcriber, "start", return_value=True) as mock_start:
             with patch("transcriber.time.sleep") as mock_sleep:

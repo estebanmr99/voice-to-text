@@ -41,6 +41,9 @@ KEYEVENTF_EXTENDEDKEY = 0x0001
 VK_CONTROL = 0x11
 VK_V = 0x56
 
+# ULONG_PTR is not always present in ctypes.wintypes; define it manually.
+ULONG_PTR = ctypes.c_ulonglong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_ulong
+
 
 class KEYBDINPUT(ctypes.Structure):
     _fields_ = [
@@ -48,7 +51,7 @@ class KEYBDINPUT(ctypes.Structure):
         ("wScan", wintypes.WORD),
         ("dwFlags", wintypes.DWORD),
         ("time", wintypes.DWORD),
-        ("dwExtraInfo", wintypes.ULONG_PTR),
+        ("dwExtraInfo", ULONG_PTR),
     ]
 
 
@@ -246,22 +249,22 @@ class PasteController:
         """
         user32 = ctypes.windll.user32
 
-        inputs = (
+        inputs = (INPUT * 4)(
             INPUT(
                 INPUT_KEYBOARD,
-                KEYBDINPUT(VK_CONTROL, 0, 0, 0, None),
+                KEYBDINPUT(VK_CONTROL, 0, 0, 0, 0),
             ),
             INPUT(
                 INPUT_KEYBOARD,
-                KEYBDINPUT(VK_V, 0, 0, 0, None),
+                KEYBDINPUT(VK_V, 0, 0, 0, 0),
             ),
             INPUT(
                 INPUT_KEYBOARD,
-                KEYBDINPUT(VK_V, 0, KEYEVENTF_KEYUP, 0, None),
+                KEYBDINPUT(VK_V, 0, KEYEVENTF_KEYUP, 0, 0),
             ),
             INPUT(
                 INPUT_KEYBOARD,
-                KEYBDINPUT(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0, None),
+                KEYBDINPUT(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0, 0),
             ),
         )
 

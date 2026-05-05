@@ -43,7 +43,7 @@ class TestDirectBlockFeeding:
         for i in range(num_blocks):
             block = sample_audio_16khz[i * blocksize : (i + 1) * blocksize]
             event = detector.process_frame(block)
-            if event is not None:
+            if event in (VADEvent.SPEECH_START, VADEvent.SPEECH_END):
                 events.append((i, event))
 
         # SPEECH_START after 3 consecutive speech frames (blocks 10,11,12)
@@ -75,10 +75,12 @@ class TestDirectBlockFeeding:
             detector.process_frame(block)
 
         buffer = detector.speech_buffer
-        # First utterance: frames 12-19 inclusive = 8 frames = 3840 samples
-        # Second utterance: frames 32-39 inclusive = 8 frames = 3840 samples
-        # Total = 7680 samples
-        assert len(buffer) == 7680
+        # The buffer accumulates from SPEECH_START through SPEECH_END,
+        # including the trailing silence frames (they are buffered before
+        # the silence threshold triggers the end event).
+        # Second utterance: blocks 32-49 inclusive = 18 frames = 8640 samples
+        # (The first utterance was cleared when the second SPEECH_START fired.)
+        assert len(buffer) == 18 * blocksize
 
 
 # ---------------------------------------------------------------------------

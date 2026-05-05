@@ -147,7 +147,7 @@ class TestAudioCaptureLifecycle:
                 raise RuntimeError("bad device")
             return _MockStream(*args, **kwargs)
 
-        mock_sd.InputStream.side_effect = failing_then_ok
+        mock_sd.InputStream = failing_then_ok
         cap = ac.AudioCapture(device_index=99)
         cap.start(MagicMock())
         assert calls == [99, None]

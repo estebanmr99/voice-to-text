@@ -51,22 +51,23 @@ class Diagnostics:
         millisecond timestamp suffix and a new file is started.
         Old files beyond the limit are deleted.
         """
-        if not self._current_log.exists():
-            return
-
-        if self._current_log.stat().st_size >= _MAX_LOG_SIZE_BYTES:
+        # Rotate current log if oversized
+        if self._current_log.exists() and self._current_log.stat().st_size >= _MAX_LOG_SIZE_BYTES:
             suffix = datetime.now(timezone.utc).strftime("%H%M%S%f")[:-3]
             rotated = self._current_log.with_suffix(f".log.{suffix}")
             self._current_log.rename(rotated)
             self._current_log = self._log_dir / f"app-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.log"
 
-        # Prune old files (newest first)
+        # Prune old files (newest first) — always run, even if current log doesn't exist yet.
+        # Leave room for the current log file we're about to write.
         log_files = sorted(
             self._log_dir.glob("app-*.log*"),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
-        for old in log_files[_MAX_LOG_FILES:]:
+        # If current log already exists, it counts toward the limit; otherwise reserve 1 slot.
+        keep_count = _MAX_LOG_FILES - (0 if self._current_log.exists() else 1)
+        for old in log_files[keep_count:]:
             old.unlink()
 
     # ------------------------------------------------------------------

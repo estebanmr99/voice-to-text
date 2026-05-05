@@ -11,7 +11,7 @@ import logging
 from ctypes import wintypes
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Signal, QTimer
+from PySide6.QtCore import QObject, Signal, QTimer, QAbstractNativeEventFilter
 from PySide6.QtGui import QAction, QActionGroup, QCursor, QIcon, QPixmap, QColor, QPainter, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -37,7 +37,7 @@ MOD_WIN = 0x0008
 WM_HOTKEY = 0x0312
 
 
-class HotkeyNativeEventFilter(QObject):
+class HotkeyNativeEventFilter(QObject, QAbstractNativeEventFilter):
     """Native event filter that intercepts WM_HOTKEY and emits a Qt signal."""
 
     hotkey_pressed = Signal(int)

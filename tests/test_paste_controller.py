@@ -60,6 +60,7 @@ class TestPasteControllerBackupRestore:
         mock_clipboard.OpenClipboard.assert_called_once()
 
     def test_backup_empty_clipboard(self, mock_clipboard):
+        mock_clipboard.IsClipboardFormatAvailable.side_effect = None
         mock_clipboard.IsClipboardFormatAvailable.return_value = False
         fmt, data = PasteController._backup_clipboard()
         assert fmt == 0

@@ -114,8 +114,8 @@ class TestSpeechDetectorStateMachine:
         mock_vad.is_speech.return_value = True
         detector = sd.SpeechDetector(vad_backend=mock_vad)
 
-        assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
-        assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
+        assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SILENCE
+        assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SILENCE
         event = detector.process_frame(np.zeros(480, dtype=np.int16))
         assert event == sd.VADEvent.SPEECH_START
         assert detector.in_speech is True
@@ -172,9 +172,9 @@ class TestSpeechDetectorStateMachine:
             detector.process_frame(np.ones(480, dtype=np.int16))
 
         buffer = detector.speech_buffer
-        # SPEECH_START on frame 3, SPEECH_END on frame 13
-        # Accumulated frames: 3,4,5,6,7,8,9,10,11,12 = 10 frames
-        assert len(buffer) == 10 * 480
+        # SPEECH_START on frame 3 (index 2), SPEECH_END on frame 16 (index 15)
+        # Buffer includes the triggering silence frame, so frames 2-15 inclusive = 14 frames
+        assert len(buffer) == 14 * 480
         assert buffer.dtype == np.int16
 
 
@@ -204,8 +204,8 @@ class TestSpeechDetectorReset:
         detector.reset()
 
         # Need 3 fresh speech frames to trigger again
-        assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
-        assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
+        assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SILENCE
+        assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SILENCE
         assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SPEECH_START
 
 
@@ -236,10 +236,10 @@ class TestSpeechDetectorBuffer:
         old_len = len(detector.speech_buffer)
         assert old_len > 0
 
-        # Next speech start clears buffer
+        # Next speech start clears buffer and starts with the triggering frame only
         for _ in range(3):
             detector.process_frame(np.zeros(480, dtype=np.int16))
-        assert len(detector.speech_buffer) == 3 * 480
+        assert len(detector.speech_buffer) == 1 * 480
 
 
 # ---------------------------------------------------------------------------

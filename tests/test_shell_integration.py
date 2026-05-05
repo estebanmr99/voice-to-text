@@ -65,13 +65,14 @@ class TestShellIntegration:
         assert "Confirmation" in labels
 
     def test_status_panel_position(self, shell, qapp):
+        from PySide6.QtCore import Qt
         shell.show_status_panel("idle")
         panel = shell._status_panel
         assert panel is not None
         assert panel.isVisible()
         # Check flags
         flags = panel.windowFlags()
-        assert flags & 0x00008000  # Qt.WindowStaysOnTopHint
+        assert flags & Qt.WindowStaysOnTopHint
 
     def test_status_panel_auto_hide_ready(self, shell, qapp):
         shell.show_status_panel("ready")
