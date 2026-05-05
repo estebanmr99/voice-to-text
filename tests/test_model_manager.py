@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from model_manager import ModelInfo, ModelManager
+from model_manager import ModelInfo, ModelManager, Profile
 
 
 class TestModelInfoSerialization:
@@ -35,6 +35,55 @@ class TestModelInfoSerialization:
         assert info.language == "auto"
         assert info.parameters == {}
 
+    def test_model_info_round_trip_with_metadata(self, tmp_path: Path) -> None:
+        original = ModelInfo(
+            name="small",
+            path=tmp_path / "small.bin",
+            size_mb=465,
+            checksum_sha256="a" * 64,
+            backend="whisper.cpp",
+            profile_compatibility=["cpu-portable", "cpu-high-accuracy"],
+            source_url="https://example.invalid/small",
+            license_status="verify",
+        )
+        restored = ModelInfo.from_dict(original.to_dict())
+        assert restored.backend == "whisper.cpp"
+        assert restored.profile_compatibility == [
+            "cpu-portable",
+            "cpu-high-accuracy",
+        ]
+        assert restored.source_url == "https://example.invalid/small"
+        assert restored.license_status == "verify"
+
+    def test_model_info_has_backend(self, tmp_path: Path) -> None:
+        info = ModelInfo(name="base", path=tmp_path / "base.bin", size_mb=141)
+        assert info.backend == "whisper.cpp"
+
+    def test_model_info_has_profile_compatibility(self) -> None:
+        info = ModelInfo.from_dict({"name": "base", "path": "x", "size_mb": 1})
+        assert info.profile_compatibility == [
+            "cpu-portable",
+            "cpu-high-accuracy",
+            "nvidia-dev",
+        ]
+
+
+class TestProfileSerialization:
+    """Round-trip profile records and default seeding."""
+
+    def test_profile_round_trip(self) -> None:
+        original = Profile(
+            canonical_name="cpu-portable",
+            display_name="CPU Portable",
+            description="Fast CPU profile",
+            preferred_model="base",
+            fallback_order=["small"],
+            backend_hint="whisper.cpp",
+            shipping_default=True,
+        )
+        restored = Profile(**original.__dict__)
+        assert restored == original
+
 
 class TestModelManagerRegistry:
     """Registry persistence and defaults."""
@@ -45,6 +94,15 @@ class TestModelManagerRegistry:
         names = {m.name for m in models}
         assert "base" in names
         assert "small" in names
+
+    def test_default_profiles_seeded(self, tmp_path: Path) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        profiles = mgr.list_profiles()
+        assert {p.canonical_name for p in profiles} == {
+            "cpu-portable",
+            "cpu-high-accuracy",
+            "nvidia-dev",
+        }
 
     def test_registry_saved_to_disk(self, tmp_path: Path) -> None:
         mgr = ModelManager(models_dir=tmp_path)
@@ -76,6 +134,48 @@ class TestModelManagerRegistry:
         mgr = ModelManager(models_dir=tmp_path)
         with pytest.raises(KeyError):
             mgr.get_model("nonexistent")
+
+    def test_get_profile_found(self, tmp_path: Path) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        profile = mgr.get_profile("cpu-portable")
+        assert profile.preferred_model == "base"
+
+    def test_get_profile_missing_raises(self, tmp_path: Path) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        with pytest.raises(KeyError):
+            mgr.get_profile("unknown")
+
+    def test_get_shipping_default(self, tmp_path: Path) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        profile = mgr.get_shipping_default_profile()
+        assert profile.canonical_name == "cpu-portable"
+
+    def test_registry_saves_profiles(self, tmp_path: Path) -> None:
+        mgr1 = ModelManager(models_dir=tmp_path)
+        custom = Profile(
+            canonical_name="custom-cpu",
+            display_name="Custom CPU",
+            description="Custom",
+            preferred_model="base",
+            fallback_order=["small"],
+            backend_hint="whisper.cpp",
+        )
+        mgr1._profiles[custom.canonical_name] = custom
+        mgr1._save_registry()
+
+        mgr2 = ModelManager(models_dir=tmp_path)
+        loaded = mgr2.get_profile("custom-cpu")
+        assert loaded.display_name == "Custom CPU"
+
+    def test_legacy_registry_loads_profiles(self, tmp_path: Path) -> None:
+        registry = tmp_path / "registry.json"
+        registry.parent.mkdir(parents=True, exist_ok=True)
+        registry.write_text(
+            '{"models": [{"name": "base", "path": "base.bin", "size_mb": 1}]}\n',
+            encoding="utf-8",
+        )
+        mgr = ModelManager(models_dir=tmp_path)
+        assert len(mgr.list_profiles()) == 3
 
 
 class TestModelManagerValidation:
@@ -118,6 +218,80 @@ class TestModelManagerValidation:
         )
         mgr = ModelManager(models_dir=tmp_path)
         assert mgr.validate_model(info) is False
+
+    def test_validate_model_no_checksum_skips_validation(self, tmp_path: Path) -> None:
+        model_file = tmp_path / "ggml-base.bin"
+        model_file.write_bytes(b"fake model data")
+        info = ModelInfo(name="base", path=model_file, size_mb=1)
+        mgr = ModelManager(models_dir=tmp_path)
+        assert mgr.validate_model(info) is True
+
+    def test_validate_metadata_complete(self, tmp_path: Path) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        info = ModelInfo(
+            name="base",
+            path=tmp_path / "ggml-base.bin",
+            size_mb=141,
+            checksum_sha256="f" * 64,
+            backend="whisper.cpp",
+            profile_compatibility=["cpu-portable"],
+            source_url="https://example.invalid/base",
+            license_status="approved",
+        )
+        complete, warnings = mgr.validate_model_metadata(info)
+        assert complete is True
+        assert warnings == []
+
+    def test_validate_metadata_missing_checksum_warning(
+        self, tmp_path: Path
+    ) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        info = ModelInfo(
+            name="base",
+            path=tmp_path / "ggml-base.bin",
+            size_mb=141,
+            backend="whisper.cpp",
+            profile_compatibility=["cpu-portable"],
+            source_url="https://example.invalid/base",
+            license_status="approved",
+        )
+        complete, warnings = mgr.validate_model_metadata(info)
+        assert complete is True
+        assert any("checksum_sha256" in warning for warning in warnings)
+
+    def test_validate_metadata_missing_source_url_warning(
+        self, tmp_path: Path
+    ) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        info = ModelInfo(
+            name="base",
+            path=tmp_path / "ggml-base.bin",
+            size_mb=141,
+            backend="whisper.cpp",
+            profile_compatibility=["cpu-portable"],
+            source_url="",
+            license_status="approved",
+        )
+        complete, warnings = mgr.validate_model_metadata(info)
+        assert complete is True
+        assert any("source_url" in warning for warning in warnings)
+
+    def test_validate_metadata_missing_license_warning(
+        self, tmp_path: Path
+    ) -> None:
+        mgr = ModelManager(models_dir=tmp_path)
+        info = ModelInfo(
+            name="base",
+            path=tmp_path / "ggml-base.bin",
+            size_mb=141,
+            backend="whisper.cpp",
+            profile_compatibility=["cpu-portable"],
+            source_url="https://example.invalid/base",
+            license_status="candidate",
+        )
+        complete, warnings = mgr.validate_model_metadata(info)
+        assert complete is True
+        assert any("candidate" in warning for warning in warnings)
 
 
 class TestModelManagerDefaults:
