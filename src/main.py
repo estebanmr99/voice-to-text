@@ -32,6 +32,50 @@ from dictation_loop import DictationLoop
 from shell_integration import ShellIntegration
 
 
+def _apply_profile_change(
+    new_profile: str,
+    settings: SettingsStore,
+    model_manager: ModelManager,
+    transcriber: Transcriber,
+    shell: ShellIntegration,
+    diagnostics: Diagnostics,
+    hardware_info,
+) -> None:
+    """Apply profile change by resolving model and restarting transcriber."""
+    diagnostics.event("profile_change_requested", profile=new_profile)
+    transcriber.stop()
+    resolution = resolve_profile(settings, model_manager, hardware_info)
+    if resolution.model_info is None:
+        shell.show_notification(
+            "Spanglish Dictation",
+            f"Profile '{new_profile}' unavailable. {resolution.error_message}",
+        )
+        diagnostics.event(
+            "profile_change_failed",
+            profile=new_profile,
+            error=resolution.error_message[:100],
+        )
+        return
+
+    success = transcriber.start(resolution.model_info)
+    if success:
+        shell.update_profile_tooltip(resolution.model_info.name)
+        diagnostics.event(
+            "profile_changed",
+            profile=resolution.profile_used,
+            model=resolution.model_info.name,
+            fallback=resolution.fallback_applied,
+        )
+        if resolution.advisory_message:
+            shell.show_notification("Spanglish Dictation", resolution.advisory_message)
+    else:
+        shell.show_notification(
+            "Spanglish Dictation",
+            f"Failed to load model for profile '{new_profile}'. Check model files.",
+        )
+        diagnostics.event("profile_change_model_load_failed", profile=new_profile)
+
+
 def _create_fallback_icon():
     """Build a simple microphone-shaped pixmap icon for Windows."""
     from PySide6.QtCore import Qt as _Qt
@@ -105,7 +149,26 @@ def main() -> int:
     # ------------------------------------------------------------------
     # Shell integration (tray + hotkey)
     # ------------------------------------------------------------------
-    shell = ShellIntegration(settings=settings, diagnostics=diagnostics)
+    shell = ShellIntegration(
+        settings=settings,
+        model_manager=model_manager,
+        diagnostics=diagnostics,
+    )
+
+    hardware_info = detect_hardware()
+
+    def _on_profile_changed(new_profile: str) -> None:
+        _apply_profile_change(
+            new_profile,
+            settings,
+            model_manager,
+            transcriber,
+            shell,
+            diagnostics,
+            hardware_info,
+        )
+
+    shell.profile_changed.connect(_on_profile_changed)
     shell.register_hotkeys()
 
     # Connect signals
@@ -132,7 +195,6 @@ def main() -> int:
     tray.setIcon(icon)
 
     # Detect hardware and resolve profile/model selection
-    hardware_info = detect_hardware()
     diagnostics.event(
         "hardware_detected",
         cpu_cores=hardware_info.cpu_logical_cores,
@@ -156,6 +218,7 @@ def main() -> int:
         )
     else:
         transcriber.start(resolution.model_info)
+        shell.update_profile_tooltip(resolution.model_info.name)
         diagnostics.event(
             "model_loaded",
             model=resolution.model_info.name,
