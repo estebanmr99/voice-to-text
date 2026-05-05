@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QGraphicsDropShadowEffect,
 )
+from settings_dialog import SettingsDialog
 
 if TYPE_CHECKING:
     from model_manager import ModelManager
@@ -188,7 +189,7 @@ class ShellIntegration(QObject):
 
         action_start.triggered.connect(lambda: self._log_event("tray_start_clicked"))
         action_stop.triggered.connect(lambda: self._log_event("tray_stop_clicked"))
-        action_settings.triggered.connect(lambda: self._log_event("tray_settings_clicked"))
+        action_settings.triggered.connect(self._on_settings)
         action_exit.triggered.connect(self._on_exit)
 
         menu.addAction(action_start)
@@ -263,6 +264,16 @@ class ShellIntegration(QObject):
         self.unregister_hotkeys()
         if self._app is not None:
             self._app.quit()
+
+    def _on_settings(self) -> None:
+        self._log_event("tray_settings_opened")
+        dialog = SettingsDialog(
+            settings=self._settings,
+            audio_capture=None,
+            model_manager=self._model_manager,
+            parent=None,
+        )
+        dialog.exec()
 
     # ------------------------------------------------------------------
     # Status panel
