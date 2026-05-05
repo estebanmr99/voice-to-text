@@ -12,8 +12,8 @@
 ### Core Dictation
 
 - [ ] **CORE-01**: Activate dictation via global hotkey with push-to-talk and toggle modes
-- [ ] **CORE-02**: Capture microphone audio with local device selection, WASAPI-compatible backend
-- [ ] **CORE-03**: Detect speech start/end using VAD with selectable profiles (WebRTC default, Silero accurate)
+- [x] **CORE-02**: Capture microphone audio with local device selection, WASAPI-compatible backend
+- [x] **CORE-03**: Detect speech start/end using VAD with selectable profiles (WebRTC default, Silero accurate)
 - [ ] **CORE-04**: Transcribe offline using local quantized Whisper models via whisper.cpp or faster-whisper
 - [ ] **CORE-05**: Post-process transcripts with deterministic Spanglish technical glossary (no LLM rewriting)
 - [ ] **CORE-06**: Paste final text into focused Windows app via clipboard + SendInput
@@ -69,8 +69,8 @@
 | TEST-01 | Network-blocking privacy tests | 1 | 01-02 | Defined |
 | TEST-02 | Missing model offline behavior | 1 | 01-03 | Defined |
 | CORE-01 | Global hotkey activation | 2 | 02-05 | Defined |
-| CORE-02 | Microphone capture | 2 | 02-02 | Defined |
-| CORE-03 | VAD speech detection | 2 | 02-02 | Defined |
+| CORE-02 | Microphone capture | 2 | 02-02 | Complete |
+| CORE-03 | VAD speech detection | 2 | 02-02 | Complete |
 | CORE-04 | Offline transcription | 2 | 02-03 | Defined |
 | CORE-05 | Spanglish glossary | 5 | 05-01 | Defined |
 | CORE-06 | Paste into focused app | 2 | 02-04 | Defined |

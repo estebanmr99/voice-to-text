@@ -65,7 +65,7 @@
 - [x] 02-01: Scaffold Python project with PySide6 shell — `pyproject.toml`, `SettingsStore`, `Diagnostics`, tray icon
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 02-02: Implement AudioCapture + SpeechDetector (WebRTC VAD) — `sounddevice` capture, `webrtcvad` detection
+- [x] 02-02: Implement AudioCapture + SpeechDetector (WebRTC VAD) — `sounddevice` capture, `webrtcvad` detection
 - [ ] 02-04: Implement PasteController with Win32 clipboard/SendInput — `SendInput` primary, clipboard fallback+restore
 
 **Wave 3** *(blocked on Wave 2 completion)*

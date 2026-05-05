@@ -9,8 +9,8 @@ progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
-  percent: 20
+  completed_plans: 2
+  percent: 40
 ---
 
 # Project State
@@ -22,8 +22,8 @@ progress:
 ## Current Position
 
 **Phase:** 2 of 6 — MVP Offline Dictation
-**Status:** Executing — 02-01 complete, ready for 02-02
-**Progress:** [█████████░] 80%
+**Status:** Executing — 02-01 complete, 02-02 complete, ready for 02-03 / 02-04
+**Progress:** [████░░░░░░] 40%
 
 ## Recent Decisions
 
@@ -40,24 +40,26 @@ progress:
 - 2026-05-04: **02-01 scaffold complete** — Python src-layout, SettingsStore, Diagnostics, PySide6 tray shell committed
 - 2026-05-04: Used manual QApplication fixture instead of pytest-qt to minimize dev dependencies
 - 2026-05-04: Created programmatic fallback tray icon for Windows (no bundled PNG assets)
+- 2026-05-04: **02-02 audio+VAD complete** — AudioCapture (sounddevice/PortAudio), SpeechDetector (webrtcvad), integration tests committed
 
 ## Pending Todos
 
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
-- Execute Phase 2 plans: 02-02 (audio+VAD) + 02-04 (paste) → 02-03 (transcriber) → 02-05 (wire loop)
-- Run pytest on 02-01 tests once Python toolchain is available on execution environment
+- Execute Phase 2 plans: 02-04 (paste) and 02-03 (transcriber) → 02-05 (wire loop)
+- Run pytest on 02-01 and 02-02 tests once Python toolchain is available on execution environment
 
 ## Blockers/Concerns
 
 1. **GSD `gsd-sdk init` requires Claude login** — Canonical files hand-written; future `/gsd-*` commands in OpenCode work fine
-2. **webrtcvad has no PyPI wheel for Windows** — May need `webrtcvad-wheels` community package or compile from source
+2. **webrtcvad has no PyPI wheel for Windows** — Resolved by `webrtcvad-wheels==2.0.11` in pyproject.toml; import path verified as `import webrtcvad`
+3. **Python toolchain missing in execution environment** — Tests written but not executable; requires local Python 3.11+ install
 
 ## Session Continuity
 
 Last session: 2026-05-04
-Stopped at: 02-01 scaffold complete. All source and test files committed. Ready to execute 02-02 (audio+VAD).
-Resume file: .planning/phases/02-mvp-offline-dictation/02-01-SUMMARY.md
+Stopped at: 02-02 audio+VAD complete. AudioCapture, SpeechDetector, and integration tests committed. Ready for 02-03 (transcriber) or 02-04 (paste).
+Resume file: .planning/phases/02-mvp-offline-dictation/02-02-SUMMARY.md
 
 ## Task Status
 
@@ -66,7 +68,7 @@ Resume file: .planning/phases/02-mvp-offline-dictation/02-01-SUMMARY.md
 | 1. GSD tooling recovery | DONE | Canonical files hand-written; `gsd-sdk` CLI available for non-LLM queries |
 | 2. Architecture/privacy/licensing | DONE | — |
 | 3. ASR/VAD benchmark | PARTIAL | 2 of 10 ASR models available (base, small); VAD assets pending |
-| 4. MVP dictation loop | IN PROGRESS | 02-01 scaffold done; 02-02/02-04 next |
+| 4. MVP dictation loop | IN PROGRESS | 02-01 scaffold done; 02-02 audio+VAD done; 02-03/02-04 next |
 | 5. Model profiles | BLOCKED | Needs Task 4 |
 | 6. GUI/tray polish | BLOCKED | Needs Task 4 |
 | 7. Spanglish glossary | BLOCKED | Needs Task 4 |
