@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 if TYPE_CHECKING:
+    from model_manager import ModelManager
     from settings_store import SettingsStore
     from diagnostics import Diagnostics
 
@@ -64,6 +65,7 @@ class ShellIntegration(QObject):
 
     hotkey_pressed = Signal(int)
     status_changed = Signal(str)
+    profile_changed = Signal(str)
 
     # Status color mapping
     _STATUS_COLORS: dict[str, str] = {
@@ -85,10 +87,12 @@ class ShellIntegration(QObject):
     def __init__(
         self,
         settings: "SettingsStore",
+        model_manager: "ModelManager | None" = None,
         diagnostics: "Diagnostics | None" = None,
     ) -> None:
         super().__init__()
         self._settings = settings
+        self._model_manager = model_manager
         self._diagnostics = diagnostics
         self._hotkey_id = 1
         self._registered = False
@@ -192,6 +196,37 @@ class ShellIntegration(QObject):
         menu.addSeparator()
         menu.addMenu(paste_mode_menu)
         menu.addSeparator()
+
+        if self._model_manager is not None:
+            profile_menu = QMenu("Profile", menu)
+            profile_group = QActionGroup(profile_menu)
+            profile_group.setExclusive(True)
+
+            for profile in self._model_manager.list_profiles():
+                action = QAction(profile.display_name, profile_menu)
+                action.setCheckable(True)
+                action.setChecked(
+                    profile.canonical_name == self._settings.model_profile
+                )
+                action.setActionGroup(profile_group)
+                action.setData(profile.canonical_name)
+                profile_menu.addAction(action)
+
+            def _on_profile_changed(action: QAction) -> None:
+                new_profile = action.data()
+                if (
+                    new_profile
+                    and isinstance(new_profile, str)
+                    and new_profile != self._settings.model_profile
+                ):
+                    self._settings.model_profile = new_profile
+                    self._log_event("profile_changed", profile=new_profile)
+                    self.profile_changed.emit(new_profile)
+
+            profile_group.triggered.connect(_on_profile_changed)
+            menu.addMenu(profile_menu)
+            menu.addSeparator()
+
         menu.addAction(action_settings)
         menu.addSeparator()
         menu.addAction(action_exit)
@@ -205,6 +240,13 @@ class ShellIntegration(QObject):
     def update_tray_tooltip(self, text: str) -> None:
         if self._tray_icon is not None:
             self._tray_icon.setToolTip(text)
+
+    def update_profile_tooltip(self, model_name: str = "") -> None:
+        profile_name = self._settings.model_profile
+        tooltip = f"Spanglish Dictation — {profile_name}"
+        if model_name:
+            tooltip += f" ({model_name})"
+        self.update_tray_tooltip(tooltip)
 
     def show_notification(self, title: str, message: str) -> None:
         if self._tray_icon is not None:
@@ -235,6 +277,12 @@ class ShellIntegration(QObject):
 
         color = self._STATUS_COLORS.get(status, "#9E9E9E")
         label = self._STATUS_LABELS.get(status, status.capitalize())
+        if self._model_manager is not None:
+            try:
+                profile = self._model_manager.get_profile(self._settings.model_profile)
+                label = f"{label} — {profile.display_name}"
+            except KeyError:
+                pass
 
         if self._status_label is not None:
             self._status_label.setText(label)
