@@ -75,7 +75,9 @@ class DictationLoop(QObject):
 
         self._state = DictationState.IDLE
         self._audio_buffer: list[np.ndarray] = []
-        self._auto_reset_timer: QTimer | None = None
+        self._auto_reset_timer: QTimer = QTimer(self)
+        self._auto_reset_timer.setSingleShot(True)
+        self._auto_reset_timer.timeout.connect(self._auto_reset_to_idle)
 
     # ------------------------------------------------------------------
     # State machine
@@ -125,10 +127,7 @@ class DictationLoop(QObject):
         self._audio_capture.stop()
         self._audio_buffer = []
         self._speech_detector.reset()
-
-        if self._auto_reset_timer is not None and self._auto_reset_timer.isActive():
-            self._auto_reset_timer.stop()
-
+        self._auto_reset_timer.stop()
         self._set_state(DictationState.IDLE)
 
     def toggle(self) -> None:
@@ -254,13 +253,10 @@ class DictationLoop(QObject):
 
     def _schedule_reset(self, delay_ms: int = 2000) -> None:
         """Schedule automatic return to IDLE after *delay_ms*."""
-        if self._auto_reset_timer is None:
-            self._auto_reset_timer = QTimer(self)
-            self._auto_reset_timer.setSingleShot(True)
-            self._auto_reset_timer.timeout.connect(self._auto_reset_to_idle)
         self._auto_reset_timer.start(delay_ms)
 
     def _auto_reset_to_idle(self) -> None:
+        self._auto_reset_timer.stop()
         if self._state in (DictationState.READY, DictationState.ERROR):
             self._set_state(DictationState.IDLE)
 
