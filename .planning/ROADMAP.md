@@ -188,7 +188,7 @@
 - [x] 06-03: GitHub-ready release documentation, model side-loading, privacy, and MIT license
 
 **Wave 3** *(depends on Wave 2)*
-- [ ] 06-04: GitHub release workflow, checksums, and artifact verifier
+- [x] 06-04: GitHub release workflow, checksums, and artifact verifier
 
 ### Phase 7: 5
 

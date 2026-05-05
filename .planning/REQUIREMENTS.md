@@ -40,8 +40,8 @@
 
 ### Release
 
-- [ ] **REL-01**: Open source project, legal for GitHub, cloneable/installable without cloud services or paid APIs
-- [ ] **REL-02**: SBOM and license notices for all runtime dependencies and model assets
+- [x] **REL-01**: Open source project, legal for GitHub, cloneable/installable without cloud services or paid APIs
+- [x] **REL-02**: SBOM and license notices for all runtime dependencies and model assets
 
 ## v2 Requirements (Deferred)
 
