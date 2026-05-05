@@ -121,11 +121,19 @@
 4. Immediate paste remains default
 5. UI stays responsive during transcription
 
+**Status:** Planned — 3 plans ready
+
 **Plans:**
-- 04-01: Build PySide6 tray icon and menu
-- 04-02: Create topmost floating status panel
-- 04-03: Add settings dialog for all preferences
-- 04-04: Implement confirmation mode flow
+- 04-01: Settings Dialog — comprehensive PySide6 dialog for all preferences, wired to tray
+- 04-02: Confirmation Mode Flow — editable confirmation dialog before paste, wired to dictation loop
+- 04-03: Tray & Status Panel Polish — grouped menu, state-aware actions, dismissible panel with profile info
+
+**Wave Structure**
+- **Wave 1** *(no dependencies)*
+  - [ ] 04-01: Settings Dialog
+  - [ ] 04-02: Confirmation Mode Flow
+- **Wave 2** *(blocked on Wave 1 completion)*
+  - [ ] 04-03: Tray & Status Panel Polish
 
 ---
 

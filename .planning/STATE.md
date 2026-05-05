@@ -21,9 +21,9 @@ progress:
 
 ## Current Position
 
-**Phase:** 2 of 6 — MVP Offline Dictation
-**Status:** Complete — all 5 plans executed (02-01 through 02-05)
-**Progress:** [████████░░] 75%
+**Phase:** 4 of 6 — GUI & Tray Polish
+**Status:** Planned — 3 plans ready (04-01 through 04-03)
+**Progress:** [██████████░░] 83%
 
 ## Recent Decisions
 
@@ -50,7 +50,8 @@ progress:
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
 - Run pytest on all tests locally (Python toolchain unavailable in execution environment)
-- Ready for Phase 3 (Model Profiles) or Phase 4 (GUI & Tray Polish)
+- Execute Phase 4 plans (04-01 Settings Dialog, 04-02 Confirmation Mode, 04-03 Tray Polish)
+- Ready for Phase 5 (Spanglish Glossary) after Phase 4 complete
 
 ## Blockers/Concerns
 
@@ -72,20 +73,16 @@ Resume file: None
 | 2. Architecture/privacy/licensing | DONE | — |
 | 3. ASR/VAD benchmark | PARTIAL | 2 of 10 ASR models available (base, small); VAD assets pending |
 | 4. MVP dictation loop | DONE | 02-01 through 02-05 complete; full push-to-talk loop wired |
-| 5. Model profiles | READY | Unblocked — can proceed to Phase 3 |
-| 6. GUI/tray polish | READY | Unblocked — can proceed to Phase 4 |
+| 5. Model profiles | DONE | Phase 3 complete |
+| 6. GUI/tray polish | PLANNED | Phase 4 ready to execute |
 | 7. Spanglish glossary | READY | Unblocked — can proceed |
 | 8. Packaging/release | READY | Unblocked pending Tasks 5-7 |
-| 5. Model profiles | BLOCKED | Needs Task 4 |
-| 6. GUI/tray polish | BLOCKED | Needs Task 4 |
-| 7. Spanglish glossary | BLOCKED | Needs Task 4 |
-| 8. Packaging/release | BLOCKED | Needs Tasks 4-7 |
 
 ## Next Action
 
-1. Phase 2 complete — resume with `/gsd-resume-work` or start Phase 3/4
+1. Phase 4 planned — execute with `/gsd-execute-phase 4`
 2. Run `python src/main.py` to verify tray icon and hotkey registration
-3. Proceed to Phase 3 (Model Profiles) or Phase 4 (GUI & Tray Polish)
+3. Phase 5 (Spanglish Glossary) ready after Phase 4 complete
 4. MVP can use `ggml-base.bin` as default shipping model
 
 ## Session Handoff
