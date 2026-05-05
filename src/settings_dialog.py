@@ -32,6 +32,7 @@ from audio_capture import AudioCapture
 if TYPE_CHECKING:
     from model_manager import ModelManager
     from settings_store import SettingsStore
+    from glossary import GlossaryStore
 
 
 _HOTKEY_PATTERN = re.compile(
@@ -46,12 +47,14 @@ class SettingsDialog(QDialog):
         settings: "SettingsStore",
         audio_capture: AudioCapture | None = None,
         model_manager: "ModelManager | None" = None,
+        glossary_store: "GlossaryStore | None" = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._settings = settings
         self._model_manager = model_manager
         self._audio_capture = audio_capture
+        self._glossary_store = glossary_store
 
         self.setWindowTitle("Settings")
         self.setModal(True)
@@ -115,6 +118,18 @@ class SettingsDialog(QDialog):
         glossary_row.addWidget(self.glossary_path_input, stretch=1)
         glossary_row.addWidget(browse_button)
         glossary_layout.addRow("Glossary path", glossary_row)
+
+        # Import / Export buttons
+        glossary_btn_layout = QHBoxLayout()
+        self.import_button = QPushButton("Import...", self)
+        self.export_button = QPushButton("Export...", self)
+        self.import_button.setToolTip("Import a glossary JSON file as your custom glossary")
+        self.export_button.setToolTip("Export current glossary (defaults + custom) to a file")
+        self.import_button.clicked.connect(self._on_import_glossary)
+        self.export_button.clicked.connect(self._on_export_glossary)
+        glossary_btn_layout.addWidget(self.import_button)
+        glossary_btn_layout.addWidget(self.export_button)
+        glossary_layout.addRow(glossary_btn_layout)
 
         form.addRow(hotkeys_group)
         form.addRow(audio_group)
@@ -196,6 +211,57 @@ class SettingsDialog(QDialog):
         )
         if path:
             self.glossary_path_input.setText(path)
+
+    def _on_import_glossary(self) -> None:
+        """Import a glossary JSON file and set it as user glossary."""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import glossary file",
+            "",
+            "Glossary files (*.json *.yaml *.yml *.txt)",
+        )
+        if not path:
+            return
+
+        if self._glossary_store is None:
+            QMessageBox.warning(self, "Import Error", "Glossary store not initialized.")
+            return
+
+        errors = self._glossary_store.import_glossary(Path(path))
+        if errors:
+            QMessageBox.warning(
+                self,
+                "Import Error",
+                "Invalid glossary file:\n\n" + "\n".join(errors),
+            )
+            return
+
+        # Update glossary path setting to point to the imported file location
+        if self._glossary_store._user_path is not None:
+            self._settings.set("glossary_path", str(self._glossary_store._user_path))
+            self.glossary_path_input.setText(str(self._glossary_store._user_path))
+        QMessageBox.information(self, "Import Complete", "Glossary imported successfully.")
+
+    def _on_export_glossary(self) -> None:
+        """Export current merged glossary to a file."""
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export glossary file",
+            "",
+            "Glossary files (*.json)",
+        )
+        if not path:
+            return
+
+        if self._glossary_store is None:
+            QMessageBox.warning(self, "Export Error", "Glossary store not initialized.")
+            return
+
+        try:
+            self._glossary_store.export_glossary(Path(path))
+            QMessageBox.information(self, "Export Complete", f"Glossary exported to:\n{path}")
+        except OSError as exc:
+            QMessageBox.warning(self, "Export Error", f"Failed to write glossary:\n{exc}")
 
     @staticmethod
     def _is_valid_hotkey(value: str) -> bool:

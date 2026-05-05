@@ -97,3 +97,51 @@ class TestSettingsDialog:
 
         assert dialog.audio_device_combo.isEnabled() is False
         assert "sounddevice not available" in dialog.audio_device_combo.itemText(0)
+
+    def test_glossary_import_export_buttons_exist(self, qapp, settings, model_manager):
+        from settings_dialog import SettingsDialog
+        from unittest.mock import MagicMock
+
+        glossary_store = MagicMock()
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(
+                settings=settings, audio_capture=None,
+                model_manager=model_manager, glossary_store=glossary_store,
+            )
+
+        assert hasattr(dialog, "import_button")
+        assert hasattr(dialog, "export_button")
+        assert dialog.import_button.text() == "Import..."
+        assert dialog.export_button.text() == "Export..."
+
+    def test_glossary_import_button_calls_handler(self, qapp, settings, model_manager):
+        from settings_dialog import SettingsDialog
+        from unittest.mock import MagicMock
+
+        glossary_store = MagicMock()
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(
+                settings=settings, audio_capture=None,
+                model_manager=model_manager, glossary_store=glossary_store,
+            )
+
+        with patch("settings_dialog.QFileDialog.getOpenFileName", return_value=("", "")):
+            with patch.object(dialog, "_on_import_glossary") as mock_handler:
+                dialog.import_button.click()
+                mock_handler.assert_called_once()
+
+    def test_glossary_export_button_calls_handler(self, qapp, settings, model_manager):
+        from settings_dialog import SettingsDialog
+        from unittest.mock import MagicMock
+
+        glossary_store = MagicMock()
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(
+                settings=settings, audio_capture=None,
+                model_manager=model_manager, glossary_store=glossary_store,
+            )
+
+        with patch("settings_dialog.QFileDialog.getSaveFileName", return_value=("", "")):
+            with patch.object(dialog, "_on_export_glossary") as mock_handler:
+                dialog.export_button.click()
+                mock_handler.assert_called_once()

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from model_manager import ModelManager
     from settings_store import SettingsStore
     from diagnostics import Diagnostics
+    from glossary import GlossaryStore
 
 logger = logging.getLogger(__name__)
 
@@ -92,11 +93,13 @@ class ShellIntegration(QObject):
         settings: "SettingsStore",
         model_manager: "ModelManager | None" = None,
         diagnostics: "Diagnostics | None" = None,
+        glossary_store: "GlossaryStore | None" = None,
     ) -> None:
         super().__init__()
         self._settings = settings
         self._model_manager = model_manager
         self._diagnostics = diagnostics
+        self._glossary_store = glossary_store
         self._hotkey_id = 1
         self._registered = False
         self._app = QApplication.instance()
@@ -293,6 +296,7 @@ class ShellIntegration(QObject):
             settings=self._settings,
             audio_capture=None,
             model_manager=self._model_manager,
+            glossary_store=self._glossary_store,
             parent=None,
         )
         dialog.exec()

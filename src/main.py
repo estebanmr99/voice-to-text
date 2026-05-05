@@ -163,6 +163,7 @@ def main() -> int:
         settings=settings,
         model_manager=model_manager,
         diagnostics=diagnostics,
+        glossary_store=glossary_store,
     )
 
     hardware_info = detect_hardware()

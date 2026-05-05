@@ -140,3 +140,11 @@ class SettingsStore:
     @language.setter
     def language(self, value: str) -> None:
         self.set("language", value)
+
+    @property
+    def glossary_path(self) -> str:
+        return self.get("glossary_path", "")
+
+    @glossary_path.setter
+    def glossary_path(self, value: str) -> None:
+        self.set("glossary_path", value)
