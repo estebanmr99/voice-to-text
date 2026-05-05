@@ -1,0 +1,55 @@
+{
+  "active_plan": "C:\\Users\\esteb\\Downloads\\voice-to-text\\.sisyphus\\plans\\windows-offline-spanglish-dictation.md",
+  "started_at": "2026-05-05T01:59:46.672Z",
+  "session_ids": [
+    "ses_20a43874dffe4uiYxYm4DkmA9a",
+    "ses_20a228376ffeTZpHlX63n9tfwR",
+    "ses_20a2282bfffdiRLmHttq96mT8P",
+    "ses_20a2282b5ffeqvV4OpE3BG14i5",
+    "ses_20a22829fffeKQ7KG8ziB4tlpY",
+    "ses_20a054ba9ffekp1v1dZMIHQ3p1",
+    "ses_20a054ac5ffeE8rjbsZnEWxVj4",
+    "ses_20a054ac2ffeUonVT2Eu5a5suw"
+  ],
+  "session_origins": {
+    "ses_20a43874dffe4uiYxYm4DkmA9a": "direct",
+    "ses_20a228376ffeTZpHlX63n9tfwR": "appended",
+    "ses_20a2282bfffdiRLmHttq96mT8P": "appended",
+    "ses_20a2282b5ffeqvV4OpE3BG14i5": "appended",
+    "ses_20a22829fffeKQ7KG8ziB4tlpY": "appended",
+    "ses_20a054ba9ffekp1v1dZMIHQ3p1": "appended",
+    "ses_20a054ac5ffeE8rjbsZnEWxVj4": "appended",
+    "ses_20a054ac2ffeUonVT2Eu5a5suw": "appended"
+  },
+  "plan_name": "windows-offline-spanglish-dictation",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Recover GSD tooling and generate planning artifacts — BLOCKED/PARTIAL",
+      "session_id": "ses_20a054ba9ffekp1v1dZMIHQ3p1",
+      "agent": "oracle",
+      "category": "",
+      "updated_at": "2026-05-05T02:32:21.626Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "Lock architecture, privacy, and licensing decisions",
+      "session_id": "ses_20a18434bffeCmIbCUIrcCVeXc",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-05T02:16:12.111Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "Plan Compliance Audit — oracle",
+      "session_id": "ses_20a094c81ffdELdVDhp2zq51vH",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-05T02:31:02.933Z"
+    }
+  }
+}
