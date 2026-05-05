@@ -16,8 +16,8 @@
 - [x] **CORE-03**: Detect speech start/end using VAD with selectable profiles (WebRTC default, Silero accurate)
 - [ ] **CORE-04**: Transcribe offline using local quantized Whisper models via whisper.cpp or faster-whisper
 - [ ] **CORE-05**: Post-process transcripts with deterministic Spanglish technical glossary (no LLM rewriting)
-- [ ] **CORE-06**: Paste final text into focused Windows app via clipboard + SendInput
-- [ ] **CORE-07**: Preserve and restore previous clipboard contents where feasible
+- [x] **CORE-06**: Paste final text into focused Windows app via clipboard + SendInput
+- [x] **CORE-07**: Preserve and restore previous clipboard contents where feasible
 - [ ] **CORE-08**: Show status via system tray icon and floating topmost panel
 - [ ] **CORE-09**: Run without admin rights for normal use
 
@@ -73,8 +73,8 @@
 | CORE-03 | VAD speech detection | 2 | 02-02 | Complete |
 | CORE-04 | Offline transcription | 2 | 02-03 | Defined |
 | CORE-05 | Spanglish glossary | 5 | 05-01 | Defined |
-| CORE-06 | Paste into focused app | 2 | 02-04 | Defined |
-| CORE-07 | Clipboard restore | 2 | 02-04 | Defined |
+| CORE-06 | Paste into focused app | 2 | 02-04 | Complete |
+| CORE-07 | Clipboard restore | 2 | 02-04 | Complete |
 | CORE-08 | Tray + floating panel | 4 | 04-02 | Defined |
 | CORE-09 | No admin required | 2 | 02-01 | Defined |
 | MOD-01 | Backend-switchable architecture | 1 | 01-02 | Defined |

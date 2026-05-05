@@ -66,7 +66,7 @@
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 02-02: Implement AudioCapture + SpeechDetector (WebRTC VAD) — `sounddevice` capture, `webrtcvad` detection
-- [ ] 02-04: Implement PasteController with Win32 clipboard/SendInput — `SendInput` primary, clipboard fallback+restore
+- [x] 02-04: Implement PasteController with Win32 clipboard/SendInput — `SendInput` primary, clipboard fallback+restore
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 02-03: Integrate whisper.cpp transcriber worker — `pywhispercpp` in `multiprocessing.Process`, `ModelManager`
