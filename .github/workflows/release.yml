@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ".[release]"
+          pip install ".[dev]"
+
+      - name: Prepare release
+        shell: powershell
+        run: |
+          $VERSION = "${{ github.ref_name }}" -replace '^v', ''
+          .\scripts\prepare_release.ps1 -Version $VERSION
+
+      - name: Run offline smoke test
+        shell: powershell
+        run: .\scripts\smoke_offline.ps1
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/release/spanglish-dictation-portable-*.zip
+            dist/release/sbom.cdx.json
+            dist/release/SHA256SUMS.txt
+            LICENSES/THIRD-PARTY-NOTICES.md
+            LICENSES/MODEL-NOTICES.md
+            docs/RELEASE.md
+          generate_release_notes: true
