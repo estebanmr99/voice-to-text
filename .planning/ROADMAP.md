@@ -154,11 +154,11 @@
 **Plans:** 3 plans
 
 **Wave 1** *(no dependencies)*
-- [ ] 05-01: Core PostProcessor, GlossaryStore, default glossary, and dictation loop wiring
-- [ ] 05-03: Fixture-driven tests for all success criteria and edge cases
+- [x] 05-01: Core PostProcessor, GlossaryStore, default glossary, and dictation loop wiring
+- [x] 05-03: Fixture-driven tests for all success criteria and edge cases
 
 **Wave 2** *(depends on Wave 1)*
-- [ ] 05-02: User glossary import/export UI and persistence
+- [x] 05-02: User glossary import/export UI and persistence
 
 ---
 
