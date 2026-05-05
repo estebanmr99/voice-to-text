@@ -46,18 +46,18 @@ def test_detect_hardware_has_nvidia(monkeypatch) -> None:
     assert info.nvidia_gpu_name == "NVIDIA GeForce RTX 2070 Super"
 
 
-def test_detect_hardware_wmic_failure(monkeypatch) -> None:
+def test_detect_hardware_gpu_detection_failure(monkeypatch) -> None:
     def _raise(*args, **kwargs):
-        raise subprocess.CalledProcessError(returncode=1, cmd="wmic")
+        raise subprocess.CalledProcessError(returncode=1, cmd="powershell")
 
     monkeypatch.setattr("subprocess.run", _raise)
     info = detect_hardware()
     assert info.has_nvidia_gpu is False
 
 
-def test_detect_hardware_wmic_timeout(monkeypatch) -> None:
+def test_detect_hardware_gpu_detection_timeout(monkeypatch) -> None:
     def _raise(*args, **kwargs):
-        raise subprocess.TimeoutExpired(cmd="wmic", timeout=5)
+        raise subprocess.TimeoutExpired(cmd="powershell", timeout=5)
 
     monkeypatch.setattr("subprocess.run", _raise)
     info = detect_hardware()

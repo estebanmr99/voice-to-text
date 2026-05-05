@@ -119,7 +119,6 @@ def main() -> int:
     # ------------------------------------------------------------------
     # Qt application
     # ------------------------------------------------------------------
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
     app = QApplication(sys.argv)
     app.setApplicationName("Spanglish Dictation")
     app.setQuitOnLastWindowClosed(False)

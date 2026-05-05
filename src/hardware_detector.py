@@ -52,7 +52,12 @@ def detect_hardware() -> HardwareInfo:
 
     try:
         result = subprocess.run(
-            ["wmic", "path", "win32_VideoController", "get", "Name"],
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name",
+            ],
             capture_output=True,
             text=True,
             timeout=5,
@@ -61,7 +66,7 @@ def detect_hardware() -> HardwareInfo:
         if result.returncode == 0:
             for line in result.stdout.splitlines():
                 candidate = line.strip()
-                if not candidate or candidate.lower() == "name":
+                if not candidate:
                     continue
                 lower = candidate.lower()
                 if any(token in lower for token in ("nvidia", "geforce", "rtx", "quadro")):
@@ -70,7 +75,7 @@ def detect_hardware() -> HardwareInfo:
                     info.vram_mb = _try_detect_vram_mb()
                     break
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
-        logger.warning("WMIC GPU detection failed: %s", exc)
+        logger.warning("GPU detection failed: %s", exc)
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning("Unexpected hardware detection failure: %s", exc)
 
