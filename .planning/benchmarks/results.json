@@ -11,8 +11,33 @@
     "no_retained_transcripts_by_default": true
   },
   "local_asset_scan": {
-    "result": "no local ASR or VAD model artifacts found in repo workspace",
-    "status": "pending local side-load"
+    "result": "whisper.cpp base and small models found in local models/ directory",
+    "status": "partial - 2 of 8 ASR models available",
+    "available_models": [
+      {
+        "file": "models/ggml-base.bin",
+        "size_mb": 141.1,
+        "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+        "profile": "cpu-portable"
+      },
+      {
+        "file": "models/ggml-small.bin",
+        "size_mb": 465.0,
+        "sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+        "profile": "cpu-high-accuracy"
+      }
+    ],
+    "missing_models": [
+      "ggml-tiny.bin",
+      "ggml-medium-q5_0.bin",
+      "ggml-large-v3-turbo-q5_0.bin",
+      "faster-whisper-large-v3-turbo (CTranslate2)",
+      "OpenAI Whisper reference baseline"
+    ],
+    "missing_vad": [
+      "WebRTC VAD runtime",
+      "Silero VAD model"
+    ]
   },
   "fixtures": [
     "mergear el PR",
@@ -61,9 +86,14 @@
       "backend": "whisper.cpp",
       "candidate": "base",
       "hardware_profile": "cpu-portable",
-      "status": "not yet runnable - local model missing",
-      "reason": "required local whisper.cpp model file is not present",
-      "next_local_action": "side-load the local base multilingual whisper.cpp model outside git and record checksum",
+      "status": "runnable - awaiting benchmark execution",
+      "reason": "model file present: models/ggml-base.bin",
+      "next_local_action": "run benchmark with fixture audio on AMD Ryzen 5 3600",
+      "model_ref": {
+        "file": "models/ggml-base.bin",
+        "size_mb": 141.1,
+        "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"
+      },
       "speech_end_to_text_latency": "pending local benchmark",
       "ram_or_vram": "pending local benchmark",
       "model_load_time": "pending local benchmark",
@@ -75,10 +105,15 @@
       "type": "asr",
       "backend": "whisper.cpp",
       "candidate": "small",
-      "hardware_profile": "cpu-portable",
-      "status": "not yet runnable - local model missing",
-      "reason": "required local whisper.cpp model file is not present",
-      "next_local_action": "side-load the local small multilingual whisper.cpp model outside git and record checksum",
+      "hardware_profile": "cpu-high-accuracy",
+      "status": "runnable - awaiting benchmark execution",
+      "reason": "model file present: models/ggml-small.bin",
+      "next_local_action": "run benchmark with fixture audio on AMD Ryzen 5 3600",
+      "model_ref": {
+        "file": "models/ggml-small.bin",
+        "size_mb": 465.0,
+        "sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"
+      },
       "speech_end_to_text_latency": "pending local benchmark",
       "ram_or_vram": "pending local benchmark",
       "model_load_time": "pending local benchmark",
