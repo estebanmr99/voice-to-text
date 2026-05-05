@@ -6,7 +6,7 @@
 |---|-------|------|--------------|--------|
 | 1 | Planning & Architecture | Lock architecture, privacy, licensing, benchmark design | PRIV-01, PRIV-02, MOD-01, MOD-02, TEST-01, TEST-02 | In Progress |
 | 2 | MVP Offline Dictation | 5/5 | Complete | |
-| 3 | Model Profiles | 1/3 | In Progress|  |
+| 3 | Model Profiles | 2/3 | In Progress|  |
 | 4 | GUI & Tray Polish | Floating panel, settings, confirmation mode | GUI-01–03 | Blocked |
 | 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | Blocked |
 | 6 | Packaging & Release | Windows installer, SBOM, license notices, GitHub release | REL-01–02 | Blocked |
@@ -97,7 +97,7 @@
 3. Corrupt model fails checksum validation
 4. Model registry includes source URL, license, checksum, size
 
-**Plans:**1/3 plans executed
+**Plans:**2/3 plans executed
 - 03-01: Implement ModelManager with local registry
 - 03-02: Add profile resolution and hardware detection
 - 03-03: Integrate profile switching into UI
