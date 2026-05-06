@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestReadme:
+    _RELEASES_URL = "https://github.com/estebanmr99/voice-to-text/releases"
+
     @staticmethod
     def _read() -> str:
         return (ROOT / "README.md").read_text(encoding="utf-8")
@@ -30,6 +32,14 @@ class TestReadme:
         text = self._read()
         assert "install" in text.lower()
         assert "portable" in text.lower()
+
+    def test_readme_links_install_release_privacy_and_real_releases_url(self) -> None:
+        text = self._read()
+        assert "docs/INSTALL.md" in text
+        assert "docs/RELEASE.md" in text
+        assert "docs/PRIVACY.md" in text
+        assert self._RELEASES_URL in text
+        assert "https://github.com/..." not in text
 
     def test_readme_states_no_runtime_model_downloads(self) -> None:
         text = self._read()
@@ -50,6 +60,25 @@ class TestLicense:
 
 
 class TestReleaseDocs:
+    def test_install_md_exists(self) -> None:
+        assert (ROOT / "docs" / "INSTALL.md").is_file()
+
+    def test_install_md_covers_first_run_flow(self) -> None:
+        text = (ROOT / "docs" / "INSTALL.md").read_text(encoding="utf-8")
+        required_phrases = (
+            "Windows 10",
+            "portable zip",
+            "extract",
+            "models/",
+            "first launch",
+            "hotkey",
+            "toggle mode",
+            "settings live",
+            "logs live",
+        )
+        for phrase in required_phrases:
+            assert phrase.lower() in text.lower(), f"missing install guidance: {phrase}"
+
     def test_release_md_exists(self) -> None:
         assert (ROOT / "docs" / "RELEASE.md").is_file()
 
@@ -62,6 +91,24 @@ class TestReleaseDocs:
     def test_release_md_contains_smoke_command(self) -> None:
         text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")
         assert "powershell -ExecutionPolicy Bypass -File scripts/smoke_offline.ps1" in text
+
+    def test_release_docs_cover_prepare_release_and_manual_verification(self) -> None:
+        release_text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")
+        checklist_text = (ROOT / "docs" / "GITHUB-RELEASE-CHECKLIST.md").read_text(
+            encoding="utf-8"
+        )
+        required_phrases = (
+            "scripts/prepare_release.ps1 -Version 0.1.0",
+            "side-load",
+            "offline smoke",
+            "sbom",
+            "checksums",
+            "GitHub Releases",
+        )
+        for phrase in required_phrases:
+            assert phrase.lower() in release_text.lower() or phrase.lower() in checklist_text.lower(), (
+                f"missing release documentation phrase: {phrase}"
+            )
 
     def test_release_md_contains_blocked_artifacts(self) -> None:
         text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")
