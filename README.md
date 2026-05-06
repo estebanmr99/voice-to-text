@@ -33,6 +33,8 @@ Key features:
 3. Side-load at least one Whisper model (see [Model side-loading](docs/MODEL-SIDELOADING.md)).
 4. Run `spanglish-dictation.exe`.
 
+The canonical notes for the first public ship are in [docs/releases/v0.1.0.md](docs/releases/v0.1.0.md).
+
 Need the full first-run walkthrough? See the [Install guide](docs/INSTALL.md).
 
 The portable zip includes the app executable, data assets, release
