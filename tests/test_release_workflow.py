@@ -111,6 +111,12 @@ class TestWorkflowContent:
         assert "tags:" in text
         assert "v*" in text or "'v*'" in text or '"v*"' in text
 
+    def test_workflow_is_release_only_not_general_ci(self) -> None:
+        text = self._workflow_text()
+        assert "pull_request:" not in text
+        assert "branches:" not in text
+        assert "action-gh-release" in text
+
     def test_workflow_has_release_action(self) -> None:
         text = self._workflow_text()
         assert "softprops/action-gh-release" in text
@@ -157,6 +163,28 @@ class TestReleaseChecklist:
     def test_checklist_references_smoke(self) -> None:
         text = self._checklist_text()
         assert "smoke" in text.lower() or "pytest" in text.lower()
+
+    def test_checklist_explains_ci_time_only_network_activity(self) -> None:
+        text = self._checklist_text()
+        assert "ci-time" in text.lower()
+        assert "no-runtime-network" in text.lower() or "no runtime network" in text.lower()
+
+    def test_checklist_requires_sisyphus_exclusion(self) -> None:
+        text = self._checklist_text()
+        assert ".sisyphus/" in text
+        assert "excluded" in text.lower() or "ignore" in text.lower()
+
+
+class TestPublishHygiene:
+    def test_gitignore_excludes_sisyphus(self) -> None:
+        text = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        assert ".sisyphus/" in text
+        assert "# .sisyphus/" not in text
+
+    def test_release_docs_do_not_require_sisyphus(self) -> None:
+        for relative in ("docs/RELEASE.md", "docs/GITHUB-RELEASE-CHECKLIST.md", "README.md"):
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            assert "required for release" not in text.lower() or ".sisyphus" not in text.lower()
 
 
 class TestPrepareRelease:
