@@ -59,5 +59,5 @@ outside the CycloneDX SBOM scope.  Run the following command to
 generate the software SBOM:
 
 ```
-python -m cyclonedx_py requirements -i requirements.txt -o dist/release/sbom.cdx.json
+python -m cyclonedx_py requirements requirements.txt -o dist/release/sbom.cdx.json
 ```

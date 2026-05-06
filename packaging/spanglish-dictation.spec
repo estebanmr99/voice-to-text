@@ -8,7 +8,7 @@ The portable zip build script stages this folder into dist/release/.
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(SPECPATH).resolve().parent
 
 a = Analysis(
     [str(ROOT / "src" / "main.py")],

@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) {
 # Step 2 — Generate licence bundle
 # ------------------------------------------------------------------
 Write-Host "`n[2/6] Generating licence bundle..."
-& python (Join-Path $root "scripts" "generate_license_bundle.py") --write --output-dir (Join-Path $root "LICENSES")
+& python (Join-Path (Join-Path $root "scripts") "generate_license_bundle.py") --write --output-dir (Join-Path $root "LICENSES")
 if ($LASTEXITCODE -ne 0) {
     throw "Licence bundle generation failed (exit $LASTEXITCODE)"
 }
@@ -43,7 +43,7 @@ if ($LASTEXITCODE -ne 0) {
 # ------------------------------------------------------------------
 Write-Host "`n[3/6] Generating SBOM..."
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
-python -m cyclonedx_py requirements -i (Join-Path $root "requirements.txt") -o (Join-Path $releaseDir "sbom.cdx.json")
+python -m cyclonedx_py requirements (Join-Path $root "requirements.txt") -o (Join-Path $releaseDir "sbom.cdx.json")
 if ($LASTEXITCODE -ne 0) {
     throw "SBOM generation failed (exit $LASTEXITCODE)"
 }
@@ -52,7 +52,7 @@ if ($LASTEXITCODE -ne 0) {
 # Step 4 — Build portable zip
 # ------------------------------------------------------------------
 Write-Host "`n[4/6] Building portable zip..."
-& powershell -ExecutionPolicy Bypass -File (Join-Path $root "scripts" "build_portable.ps1") -Version $Version
+& powershell -ExecutionPolicy Bypass -File (Join-Path (Join-Path $root "scripts") "build_portable.ps1") -Version $Version
 if ($LASTEXITCODE -ne 0) {
     throw "Portable build failed (exit $LASTEXITCODE)"
 }
@@ -75,7 +75,7 @@ Write-Host "Checksums written to SHA256SUMS.txt"
 # Step 6 — Verify release artifacts
 # ------------------------------------------------------------------
 Write-Host "`n[6/6] Verifying release artifacts..."
-& python (Join-Path $root "scripts" "verify_release_artifacts.py") $releaseDir
+& python (Join-Path (Join-Path $root "scripts") "verify_release_artifacts.py") $releaseDir
 if ($LASTEXITCODE -ne 0) {
     throw "Artifact verification failed (exit $LASTEXITCODE)"
 }

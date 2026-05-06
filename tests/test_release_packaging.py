@@ -124,6 +124,11 @@ class TestPackagingSpec:
             "spec must bundle data/default_glossary.json"
         )
 
+    def test_spec_uses_pyinstaller_specpath_not___file__(self) -> None:
+        text = SPEC_PATH.read_text(encoding="utf-8")
+        assert "SPECPATH" in text
+        assert "__file__" not in text
+
 
 # ------------------------------------------------------------------
 # Build script validation

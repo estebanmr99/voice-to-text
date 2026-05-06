@@ -209,3 +209,14 @@ class TestPrepareRelease:
     def test_prepare_release_has_version_parameter(self) -> None:
         text = self._script_text()
         assert "Version" in text
+
+    def test_prepare_release_uses_nested_join_path_for_script_calls(self) -> None:
+        text = self._script_text()
+        assert 'Join-Path (Join-Path $root "scripts") "generate_license_bundle.py"' in text
+        assert 'Join-Path (Join-Path $root "scripts") "build_portable.ps1"' in text
+        assert 'Join-Path (Join-Path $root "scripts") "verify_release_artifacts.py"' in text
+
+    def test_prepare_release_uses_positional_requirements_file_for_sbom(self) -> None:
+        text = self._script_text()
+        assert 'python -m cyclonedx_py requirements (Join-Path $root "requirements.txt") -o' in text
+        assert 'python -m cyclonedx_py requirements -i (Join-Path $root "requirements.txt")' not in text

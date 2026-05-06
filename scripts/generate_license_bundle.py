@@ -43,7 +43,7 @@ REQUIRED_NOTICE_TOKENS = frozenset(
 # SBOM command — printed as a reusable instruction line
 # ------------------------------------------------------------------
 
-SBOM_COMMAND = "python -m cyclonedx_py requirements -i requirements.txt -o dist/release/sbom.cdx.json"
+SBOM_COMMAND = "python -m cyclonedx_py requirements requirements.txt -o dist/release/sbom.cdx.json"
 
 # ------------------------------------------------------------------
 # Model metadata (from models/MODEL-REGISTRY.md)

@@ -87,6 +87,7 @@ class TestReleaseDocs:
         assert "SBOM" in text
         assert "LICENSES/" in text
         assert "SHA-256" in text
+        assert "python -m cyclonedx_py requirements requirements.txt -o dist/release/sbom.cdx.json" in text
 
     def test_release_md_contains_smoke_command(self) -> None:
         text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")

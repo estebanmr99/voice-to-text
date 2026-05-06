@@ -50,7 +50,7 @@ and `LICENSES/MODEL-NOTICES.md`.
 ### 4. Generate SBOM
 
 ```powershell
-python -m cyclonedx_py requirements -i requirements.txt -o dist/release/sbom.cdx.json
+python -m cyclonedx_py requirements requirements.txt -o dist/release/sbom.cdx.json
 ```
 
 Produces a CycloneDX JSON SBOM covering all runtime dependencies.
