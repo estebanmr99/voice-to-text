@@ -28,10 +28,12 @@ Key features:
 
 ## Install from portable zip
 
-1. Download the portable zip from [GitHub Releases](https://github.com/...).
+1. Download the portable zip from [GitHub Releases](https://github.com/estebanmr99/voice-to-text/releases).
 2. Extract to any folder (no admin rights required).
 3. Side-load at least one Whisper model (see [Model side-loading](docs/MODEL-SIDELOADING.md)).
 4. Run `spanglish-dictation.exe`.
+
+Need the full first-run walkthrough? See the [Install guide](docs/INSTALL.md).
 
 The portable zip includes the app executable, data assets, release
 documentation, licence notices, and an SBOM.  Model binaries and
@@ -46,6 +48,13 @@ download URLs, checksums, and hardware profile recommendations.
 The app ships with a model registry that drives model selection and
 fallback.  You choose which profiles to support by placing the
 corresponding model files in the `models/` directory.
+
+## Docs
+
+- [Install guide](docs/INSTALL.md)
+- [Release guide](docs/RELEASE.md)
+- [Privacy policy](docs/PRIVACY.md)
+- [Model side-loading](docs/MODEL-SIDELOADING.md)
 
 ## Development
 
@@ -83,7 +92,7 @@ Every release includes:
 | `LICENSES/` | Third-party and model licence notices |
 | `SHA256SUMS` | Checksum file for all release assets |
 
-See [Release guide](docs/RELEASE.md) for the full checklist.
+See [Release guide](docs/RELEASE.md) for the full checklist and [GitHub Releases](https://github.com/estebanmr99/voice-to-text/releases) for published portable builds.
 
 ## Licence
 
