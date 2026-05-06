@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 5 Spanglish Glossary complete
-last_updated: "2026-05-05T22:44:14.5365347-06:00"
+stopped_at: Quick task 260505-w0l release publication complete
+last_updated: "2026-05-05T23:18:00-06:00"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -21,10 +21,10 @@ progress:
 
 ## Current Position
 
-Phase: 06 (packaging-release) — EXECUTING
+Phase: 06 (packaging-release) — COMPLETE
 Plan: 4 of 4
-**Phase:** 5 of 6 — Spanglish Glossary
-**Status:** Phase complete — ready for verification
+**Phase:** Quick task 260505-w0l — release publication
+**Status:** `v0.1.0` public release shipped — follow-up verification only
 **Progress:** [██████████] 100%
 
 ## Recent Decisions
@@ -54,25 +54,29 @@ Plan: 4 of 4
 - 2026-05-05: Replaced broken Win32 hotkey handling with pynput global hotkeys, added continuous dictation, and synced settings changes back into the live tray shell
 - 2026-05-05: Hardened runtime reliability with atomic settings saves, more tolerant VAD/paste retries, sample-rate negotiation for microphone backends, and full regression coverage (378 passed, 3 skipped)
 - 2026-05-05: Completed quick task 260505-v8d — publish-ready docs finalized, `.sisyphus/` removed from public repo path, GitHub repo created, and local release bundle verified
+- 2026-05-05: Published public GitHub release `v0.1.0` at `https://github.com/estebanmr99/voice-to-text/releases/tag/v0.1.0` with portable zip, SBOM, and SHA256SUMS.txt assets
+- 2026-05-05: Added canonical release notes at `docs/releases/v0.1.0.md` and locked release docs/tests to the real `gh release edit v0.1.0 --notes-file` flow
+- 2026-05-05: Fixed tag-triggered release workflow publication permissions after GitHub Actions returned 403 on `softprops/action-gh-release`
 
 ## Pending Todos
 
-- Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
+- Run a clean-machine post-release smoke test by downloading `v0.1.0` from GitHub Releases and confirming side-loaded-model startup
 - Execute ASR/VAD benchmarks for available models (base, small)
 - Run manual end-to-end verification on the Logitech Brio path across MME/WASAPI and confirm global hotkeys behave correctly in UAT
-- Execute Phase 5 (Spanglish Glossary) now that the post-Phase-5 bug-fix and polish pass is committed
+- Confirm the next tag-triggered release workflow succeeds end-to-end now that `contents: write` is explicit
 
 ## Blockers/Concerns
 
 1. **GSD `gsd-sdk init` requires Claude login** — Canonical files hand-written; future `/gsd-*` commands in OpenCode work fine
 2. **webrtcvad has no PyPI wheel for Windows** — Resolved by `webrtcvad-wheels==2.0.11` in pyproject.toml; import path verified as `import webrtcvad`
 3. **Manual device/backend validation still required** — Automated tests pass, but Logitech Brio behavior across MME/WASAPI and real global hotkey capture still needs direct UAT confirmation
+4. **GitHub Actions publish step initially returned 403 for `v0.1.0`** — Public release was created successfully with `gh release create`; workflow now declares `permissions: contents: write` for future tags
 
 ## Session Continuity
 
-Last session: 2026-05-05T22:44:14.5365347-06:00
-Stopped at: Quick task 260505-v8d complete
-Resume file: .planning/quick/260505-v8d-ensure-readme-install-docs-are-complete-/260505-v8d-SUMMARY.md
+Last session: 2026-05-05T23:18:00-06:00
+Stopped at: Quick task 260505-w0l complete
+Resume file: .planning/quick/260505-w0l-i-generated-everything-manually-and-was-/260505-w0l-SUMMARY.md
 
 ## Task Status
 
@@ -85,19 +89,19 @@ Resume file: .planning/quick/260505-v8d-ensure-readme-install-docs-are-complete-
 | 5. Model profiles | DONE | Phase 3 complete |
 | 6. GUI/tray polish | DONE | 04-01 through 04-03 complete |
 | 7. Spanglish glossary | READY | 05-01 through 05-03 ready; follow-up bug-fix/polish pass committed |
-| 8. Packaging/release | READY | Unblocked pending Tasks 5-7 |
+| 8. Packaging/release | DONE | Public GitHub release `v0.1.0` shipped with portable zip, SBOM, and SHA256SUMS.txt |
 
 ## Next Action
 
-1. Run `python src/main.py` and verify Brio dictation works on the intended backend in UAT
-2. Execute Phase 5 with `/gsd-execute-phase 5`
-3. MVP can use `ggml-base.bin` as default shipping model
+1. Download `v0.1.0` from GitHub Releases and run a clean-machine smoke test with a side-loaded model
+2. Run `python src/main.py` and verify Brio dictation works on the intended backend in UAT
+3. Execute ASR/VAD benchmarks and remaining post-release verification work
 
 ## Session Handoff
 
 - Handoff file: `.planning/phases/02-mvp-offline-dictation/.continue-here.md`
 - Structured state: `.planning/HANDOFF.json`
-- Status: **PAUSED** — Phase 2 complete, ready for next phase
+- Status: **PAUSED** — public `v0.1.0` shipped; resume with post-release verification/UAT
 
 ## Performance Metrics
 
