@@ -90,7 +90,6 @@ class PasteController:
     ) -> None:
         self.mode = mode
         self._diagnostics = diagnostics
-        self._fallback_once = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -106,12 +105,16 @@ class PasteController:
             return True
 
         if self.mode is PasteMode.SENDINPUT:
-            ok = self._paste_sendinput(text)
-            if not ok and not self._fallback_once:
-                self._fallback_once = True
-                self._log_event("paste_sendinput_fallback", reason="SendInput returned 0")
-                return self._paste_clipboard(text)
-            return ok
+            # Retry up to 3 times with increasing delay for clipboard locks
+            for attempt in range(3):
+                ok = self._paste_sendinput(text)
+                if ok:
+                    return True
+                if attempt < 2:
+                    time.sleep(0.2 * (attempt + 1))
+            # All SendInput attempts failed — fall back to clipboard-only
+            self._log_event("paste_sendinput_fallback", reason="all retries failed")
+            return self._paste_clipboard(text)
 
         return self._paste_clipboard(text)
 
@@ -130,7 +133,7 @@ class PasteController:
             return False
 
         sent = self._send_ctrl_v()
-        time.sleep(0.05)  # allow target app to process paste
+        time.sleep(0.15)  # allow target app to process paste
 
         self._restore_clipboard(*backup)
         return sent

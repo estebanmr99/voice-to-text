@@ -171,7 +171,7 @@ class Transcriber:
     # ------------------------------------------------------------------
 
     def transcribe(
-        self, audio: np.ndarray, sample_rate: int = 16000
+        self, audio: np.ndarray, sample_rate: int = 16000, language: str = "auto"
     ) -> str:
         """Send *audio* to the worker and block for the result.
 
@@ -181,7 +181,8 @@ class Transcriber:
             1-D numpy array of int16 or float32 samples.
         sample_rate:
             Sample rate in Hz (default 16000 for whisper.cpp).
-
+        language:
+            Language code (e.g. "en", "es") or "auto" for detection.
         Returns
         -------
         str:
@@ -208,7 +209,7 @@ class Transcriber:
         assert self._result_queue is not None
 
         try:
-            self._audio_queue.put((audio, sample_rate))
+            self._audio_queue.put((audio, sample_rate, language))
         except Exception as exc:
             self._last_error = f"Failed to send audio to worker: {exc}"
             raise TranscriptionError(self._last_error) from exc

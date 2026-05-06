@@ -120,9 +120,9 @@ class TestSpeechDetectorStateMachine:
         assert event == sd.VADEvent.SPEECH_START
         assert detector.in_speech is True
 
-    def test_speech_end_after_ten_silence_frames(self, mock_vad):
-        # Pattern: 4 speech frames (start + 1 extra), then 10 silence frames
-        returns = [True] * 4 + [False] * 10
+    def test_speech_end_after_silence_threshold(self, mock_vad):
+        # Pattern: 4 speech frames (start + 1 extra), then 30 silence frames
+        returns = [True] * 4 + [False] * 30
         mock_vad.is_speech.side_effect = returns
         detector = sd.SpeechDetector(vad_backend=mock_vad)
 
@@ -134,11 +134,11 @@ class TestSpeechDetectorStateMachine:
         # 4th speech frame → still in speech (None)
         assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
 
-        # 9 silence frames → still in speech (None)
-        for _ in range(9):
+        # 29 silence frames → still in speech (None)
+        for _ in range(29):
             assert detector.process_frame(np.zeros(480, dtype=np.int16)) is None
 
-        # 10th silence frame → SPEECH_END
+        # 30th silence frame → SPEECH_END
         assert detector.process_frame(np.zeros(480, dtype=np.int16)) == sd.VADEvent.SPEECH_END
         assert detector.in_speech is False
 
@@ -220,18 +220,18 @@ class TestSpeechDetectorBuffer:
         assert len(detector.speech_buffer) == 0
 
     def test_buffer_available_after_speech_end(self, mock_vad):
-        returns = [True] * 5 + [False] * 10
+        returns = [True] * 5 + [False] * 30
         mock_vad.is_speech.side_effect = returns
         detector = sd.SpeechDetector(vad_backend=mock_vad)
-        for _ in range(15):
+        for _ in range(35):
             detector.process_frame(np.zeros(480, dtype=np.int16))
         assert len(detector.speech_buffer) > 0
 
     def test_buffer_cleared_on_next_speech_start(self, mock_vad):
-        returns = [True] * 5 + [False] * 10 + [True] * 3
+        returns = [True] * 5 + [False] * 30 + [True] * 3
         mock_vad.is_speech.side_effect = returns
         detector = sd.SpeechDetector(vad_backend=mock_vad)
-        for _ in range(15):
+        for _ in range(35):
             detector.process_frame(np.zeros(480, dtype=np.int16))
         old_len = len(detector.speech_buffer)
         assert old_len > 0

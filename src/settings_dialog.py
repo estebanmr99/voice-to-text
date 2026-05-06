@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -36,12 +36,16 @@ if TYPE_CHECKING:
 
 
 _HOTKEY_PATTERN = re.compile(
-    r"^(Ctrl|Alt|Shift|Win)(\+(Ctrl|Alt|Shift|Win))*\+[A-Z0-9]$",
+    r"^(Ctrl|Alt|Shift|Win)(\+(Ctrl|Alt|Shift|Win))*\+"
+    r"([A-Z0-9]|F[1-9]|F1[0-2]|Space|Enter|Return|Tab|Esc|Escape|"
+    r"Insert|Delete|Home|End|PageUp|PageDown|Up|Down|Left|Right)$",
     re.IGNORECASE,
 )
 
 
 class SettingsDialog(QDialog):
+    settings_applied = Signal()
+
     def __init__(
         self,
         settings: "SettingsStore",
@@ -70,9 +74,9 @@ class SettingsDialog(QDialog):
         hotkeys_group = QGroupBox("Hotkeys", self)
         hotkeys_layout = QFormLayout(hotkeys_group)
         self.hotkey_push_to_talk_input = QLineEdit(self)
-        self.hotkey_push_to_talk_input.setPlaceholderText("Ctrl+Alt+D")
+        self.hotkey_push_to_talk_input.setPlaceholderText("Ctrl+Shift+Space")
         self.hotkey_toggle_input = QLineEdit(self)
-        self.hotkey_toggle_input.setPlaceholderText("Ctrl+Alt+T")
+        self.hotkey_toggle_input.setPlaceholderText("Ctrl+Shift+D")
         hotkeys_layout.addRow("Push-to-talk", self.hotkey_push_to_talk_input)
         hotkeys_layout.addRow("Toggle", self.hotkey_toggle_input)
         note = QLabel("Format: Ctrl+Alt+Key or Win+Key", self)
@@ -179,7 +183,7 @@ class SettingsDialog(QDialog):
 
         self.audio_device_combo.setEnabled(True)
         for dev in devices:
-            name = str(dev.get("name", "Unknown device"))
+            name = str(dev.get("display_name") or dev.get("name", "Unknown device"))
             idx = dev.get("index")
             self.audio_device_combo.addItem(name, idx)
 
@@ -277,6 +281,7 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(self, "Invalid hotkey", "Toggle hotkey format is invalid.")
             return
 
+        self._settings.begin_batch()
         self._settings.hotkey_push_to_talk = ptt
         self._settings.hotkey_toggle = toggle
         self._settings.audio_device_index = self.audio_device_combo.currentData()
@@ -287,5 +292,6 @@ class SettingsDialog(QDialog):
         self._settings.paste_mode = str(self.paste_mode_combo.currentData())
         self._settings.language = str(self.language_combo.currentData())
         self._settings.set("glossary_path", self.glossary_path_input.text().strip())
-        self._settings.save()
+        self._settings.end_batch()
+        self.settings_applied.emit()
         self.accept()

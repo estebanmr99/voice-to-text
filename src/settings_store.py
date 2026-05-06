@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +26,8 @@ class SettingsStore:
     """
 
     _DEFAULTS: dict[str, Any] = {
-        "hotkey_push_to_talk": "Ctrl+Alt+D",
-        "hotkey_toggle": "Ctrl+Alt+T",
+        "hotkey_push_to_talk": "Ctrl+Shift+Space",
+        "hotkey_toggle": "Ctrl+Shift+D",
         "audio_device_index": None,
         "vad_profile": "webrtc",
         "model_profile": "cpu-portable",
@@ -36,6 +38,8 @@ class SettingsStore:
     def __init__(self, path: Path | None = None) -> None:
         self._path = path or Path.home() / ".spanglish-dictation" / "settings.json"
         self._data: dict[str, Any] = dict(self._DEFAULTS)
+        self._batch_depth = 0
+        self._batch_dirty = False
         self.load()
 
     # ------------------------------------------------------------------
@@ -62,11 +66,40 @@ class SettingsStore:
             self._data = dict(self._DEFAULTS)
 
     def save(self) -> None:
-        """Persist current settings to disk as indented JSON."""
+        """Persist current settings to disk atomically."""
+        if self._batch_depth > 0:
+            self._batch_dirty = True
+            return
         self._ensure_dir()
-        with self._path.open("w", encoding="utf-8") as fh:
-            json.dump(self._data, fh, indent=2, ensure_ascii=False)
-            fh.write("\n")
+        # Write to temp file then rename for crash-safe atomic save
+        try:
+            fd, tmp_path = tempfile.mkstemp(
+                dir=str(self._path.parent), suffix=".tmp", prefix=".settings_"
+            )
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(self._data, fh, indent=2, ensure_ascii=False)
+                fh.write("\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp_path, str(self._path))
+        except OSError as exc:
+            logger.warning("Failed to save settings: %s", exc)
+            # Clean up temp file if rename failed
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    def begin_batch(self) -> None:
+        """Begin a batch of changes — save() calls are deferred."""
+        self._batch_depth += 1
+
+    def end_batch(self) -> None:
+        """End a batch — if any changes were made, save once."""
+        self._batch_depth = max(0, self._batch_depth - 1)
+        if self._batch_depth == 0 and self._batch_dirty:
+            self._batch_dirty = False
+            self.save()
 
     # ------------------------------------------------------------------
     # Generic key-value API

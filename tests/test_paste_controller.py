@@ -117,16 +117,19 @@ class TestPasteControllerSendInput:
             result = ctrl.paste("hello")
 
         assert result is True
-        assert mock_clipboard.SetClipboardText.call_count == 2
+        # 3 retries of sendinput + 1 fallback clipboard-only = 4 SetClipboardText calls
+        assert mock_clipboard.SetClipboardText.call_count == 4
 
-    def test_sendinput_failure_no_infinite_fallback(self, mock_clipboard, mock_sendinput):
+    def test_sendinput_fallback_works_every_time(self, mock_clipboard, mock_sendinput):
         mock_sendinput.return_value = 0
         with patch("paste_controller.time.sleep"):
             ctrl = PasteController(mode=PasteMode.SENDINPUT)
-            ctrl.paste("first")  # triggers fallback, _fallback_once becomes True
-            result = ctrl.paste("second")  # should not fallback again
+            result1 = ctrl.paste("first")
+            result2 = ctrl.paste("second")
 
-        assert result is False
+        # Both should succeed via fallback
+        assert result1 is True
+        assert result2 is True
 
 
 class TestPasteControllerClipboardOnly:

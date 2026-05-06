@@ -1,17 +1,15 @@
 """Shell integration — global hotkey, system tray, and floating status panel.
 
-Uses Win32 ``RegisterHotKey`` (user-mode, no admin) and a Qt native event
-filter to intercept ``WM_HOTKEY`` messages inside PySide6's event loop.
+Uses pynput low-level keyboard hooks for global hotkey detection,
+system tray integration via Qt, and a floating status panel.
 """
 
 from __future__ import annotations
 
-import ctypes
 import logging
-from ctypes import wintypes
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Signal, QTimer, QAbstractNativeEventFilter
+from PySide6.QtCore import QObject, Signal, QTimer, QSize
 from PySide6.QtGui import QAction, QActionGroup, QCursor, QIcon, QPixmap, QColor, QPainter, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,11 +18,15 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QVBoxLayout,
-    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QPushButton,
 )
 from settings_dialog import SettingsDialog
+
+try:
+    from pynput import keyboard as pynput_keyboard
+except ImportError:  # pragma: no cover
+    pynput_keyboard = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from model_manager import ModelManager
@@ -34,26 +36,79 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Win32 constants
+# Mapping from user-friendly key names to pynput hotkey format
+_PYNPUT_MODIFIER_MAP = {
+    "CTRL": "<ctrl>",
+    "ALT": "<alt>",
+    "SHIFT": "<shift>",
+    "WIN": "<cmd>",
+}
+
+_PYNPUT_SPECIAL_KEY_MAP = {
+    "SPACE": "<space>",
+    "ENTER": "<enter>",
+    "RETURN": "<enter>",
+    "TAB": "<tab>",
+    "ESC": "<esc>",
+    "ESCAPE": "<esc>",
+    "F1": "<f1>", "F2": "<f2>", "F3": "<f3>", "F4": "<f4>",
+    "F5": "<f5>", "F6": "<f6>", "F7": "<f7>", "F8": "<f8>",
+    "F9": "<f9>", "F10": "<f10>", "F11": "<f11>", "F12": "<f12>",
+    "INSERT": "<insert>", "DELETE": "<delete>",
+    "HOME": "<home>", "END": "<end>",
+    "PAGEUP": "<page_up>", "PAGEDOWN": "<page_down>",
+    "UP": "<up>", "DOWN": "<down>", "LEFT": "<left>", "RIGHT": "<right>",
+}
+
+# Legacy Win32 constants (kept for _parse_hotkey compatibility with tests)
 MOD_ALT = 0x0001
 MOD_CONTROL = 0x0002
 MOD_SHIFT = 0x0004
 MOD_WIN = 0x0008
-WM_HOTKEY = 0x0312
+_MODIFIER_MAP = {
+    "ALT": MOD_ALT,
+    "CTRL": MOD_CONTROL,
+    "SHIFT": MOD_SHIFT,
+    "WIN": MOD_WIN,
+}
+_VK_MAP = {
+    "F1": 0x70, "F2": 0x71, "F3": 0x72, "F4": 0x73,
+    "F5": 0x74, "F6": 0x75, "F7": 0x76, "F8": 0x77,
+    "F9": 0x78, "F10": 0x79, "F11": 0x7A, "F12": 0x7B,
+    "SPACE": 0x20, "ENTER": 0x0D, "RETURN": 0x0D,
+    "TAB": 0x09, "ESC": 0x1B, "ESCAPE": 0x1B,
+    "INSERT": 0x2D, "DELETE": 0x2E, "HOME": 0x24, "END": 0x23,
+    "PAGEUP": 0x21, "PAGEDOWN": 0x22,
+    "UP": 0x26, "DOWN": 0x28, "LEFT": 0x25, "RIGHT": 0x27,
+}
 
 
-class HotkeyNativeEventFilter(QObject, QAbstractNativeEventFilter):
-    """Native event filter that intercepts WM_HOTKEY and emits a Qt signal."""
+def _hotkey_to_pynput_format(hotkey_str: str) -> str | None:
+    """Convert 'Ctrl+Shift+D' format to pynput '<ctrl>+<shift>+d' format."""
+    tokens = [t.strip() for t in hotkey_str.split("+") if t.strip()]
+    if len(tokens) < 2:
+        return None
 
-    hotkey_pressed = Signal(int)
+    key_token = tokens[-1].upper()
+    modifier_tokens = [t.upper() for t in tokens[:-1]]
 
-    def nativeEventFilter(self, event_type, message):
-        if event_type == b"windows_generic_MSG":
-            msg = message
-            if msg.message == WM_HOTKEY:
-                self.hotkey_pressed.emit(msg.wParam)
-                return (True, 0)
-        return (False, 0)
+    pynput_parts = []
+    for mod in modifier_tokens:
+        pynput_mod = _PYNPUT_MODIFIER_MAP.get(mod)
+        if pynput_mod is None:
+            return None
+        pynput_parts.append(pynput_mod)
+
+    # Map the key
+    special = _PYNPUT_SPECIAL_KEY_MAP.get(key_token)
+    if special:
+        pynput_parts.append(special)
+    elif len(key_token) == 1 and key_token.isalnum():
+        pynput_parts.append(key_token.lower())
+    else:
+        return None
+
+    return "+".join(pynput_parts)
 
 
 class ShellIntegration(QObject):
@@ -70,6 +125,7 @@ class ShellIntegration(QObject):
     hotkey_pressed = Signal(int)
     status_changed = Signal(str)
     profile_changed = Signal(str)
+    settings_updated = Signal()
 
     # Status color mapping
     _STATUS_COLORS: dict[str, str] = {
@@ -100,7 +156,11 @@ class ShellIntegration(QObject):
         self._model_manager = model_manager
         self._diagnostics = diagnostics
         self._glossary_store = glossary_store
-        self._hotkey_id = 1
+        self._hotkey_ids = {
+            "toggle": 1,
+            "push_to_talk": 2,
+        }
+        self._registered_hotkeys: dict[int, str] = {}
         self._registered = False
         self._app = QApplication.instance()
 
@@ -111,39 +171,80 @@ class ShellIntegration(QObject):
         self._action_start: QAction | None = None
         self._action_stop: QAction | None = None
 
-        self._event_filter = HotkeyNativeEventFilter()
-        self._event_filter.hotkey_pressed.connect(self.hotkey_pressed)
-        if self._app is not None:
-            self._app.installNativeEventFilter(self._event_filter)
+        # pynput-based global hotkey listener
+        self._hotkey_listener: object | None = None
 
     # ------------------------------------------------------------------
-    # Hotkey
+    # Hotkey (pynput-based)
     # ------------------------------------------------------------------
 
     def register_hotkeys(self) -> bool:
-        """Register global hotkeys via Win32 RegisterHotKey (no admin)."""
-        user32 = ctypes.windll.user32
-        # Default hotkey: Ctrl+Alt+D
-        result = user32.RegisterHotKey(
-            None, self._hotkey_id, MOD_CONTROL | MOD_ALT, ord("D")
-        )
-        if result:
+        """Register global hotkeys via pynput low-level keyboard hooks."""
+        self.unregister_hotkeys()
+
+        if pynput_keyboard is None:
+            logger.error("pynput not installed — global hotkeys unavailable")
+            self._log_event("hotkey_registration_failed", reason="pynput_missing")
+            return False
+
+        hotkey_map: dict[str, callable] = {}
+        desired_hotkeys = [
+            ("toggle", self._settings.hotkey_toggle),
+            ("push_to_talk", self._settings.hotkey_push_to_talk),
+        ]
+        seen: set[str] = set()
+
+        for role, raw_hotkey in desired_hotkeys:
+            normalized = raw_hotkey.strip().upper()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+
+            pynput_str = _hotkey_to_pynput_format(raw_hotkey)
+            if pynput_str is None:
+                logger.warning("Invalid hotkey setting ignored: %s", raw_hotkey)
+                continue
+
+            hotkey_id = self._hotkey_ids[role]
+            # Create a closure that captures the hotkey_id
+            def _make_callback(hid: int):
+                def _cb():
+                    self.hotkey_pressed.emit(hid)
+                return _cb
+
+            hotkey_map[pynput_str] = _make_callback(hotkey_id)
+            self._registered_hotkeys[hotkey_id] = raw_hotkey.strip()
+            self._log_event("hotkey_registered", role=role, hotkey=raw_hotkey.strip())
+            logger.info("Registered global hotkey %s for %s (pynput: %s)", raw_hotkey.strip(), role, pynput_str)
+
+        if not hotkey_map:
+            self._log_event("hotkey_registration_failed")
+            return False
+
+        try:
+            self._hotkey_listener = pynput_keyboard.GlobalHotKeys(hotkey_map)
+            self._hotkey_listener.daemon = True
+            self._hotkey_listener.start()
             self._registered = True
-            self._log_event("hotkey_registered", modifiers="Ctrl+Alt", key="D")
-            logger.info("Registered global hotkey Ctrl+Alt+D")
-        else:
-            logger.warning("Failed to register global hotkey")
+            logger.info("pynput hotkey listener started")
+        except Exception as exc:
+            logger.exception("Failed to start pynput hotkey listener: %s", exc)
+            self._registered = False
+            self._log_event("hotkey_registration_failed", error=str(exc)[:100])
+
         return self._registered
 
     def unregister_hotkeys(self) -> None:
-        """Unregister all global hotkeys."""
-        if not self._registered:
-            return
-        user32 = ctypes.windll.user32
-        user32.UnregisterHotKey(None, self._hotkey_id)
+        """Stop the pynput hotkey listener."""
+        if self._hotkey_listener is not None:
+            try:
+                self._hotkey_listener.stop()
+            except Exception:
+                pass
+            self._hotkey_listener = None
         self._registered = False
-        self._log_event("hotkey_unregistered")
-        logger.info("Unregistered global hotkey")
+        self._registered_hotkeys.clear()
+        logger.info("Hotkeys unregistered")
 
     # ------------------------------------------------------------------
     # Tray
@@ -161,10 +262,12 @@ class ShellIntegration(QObject):
         menu = QMenu()
 
         action_start = QAction("&Start Dictation", menu)
+        action_continuous = QAction("Start &Continuous", menu)
         action_stop = QAction("St&op Dictation", menu)
         action_settings = QAction("&Settings", menu)
         action_exit = QAction("E&xit", menu)
         action_show_panel = QAction("Show Status Panel", menu)
+        self._action_show_panel = action_show_panel
 
         action_stop.setEnabled(False)
 
@@ -196,9 +299,10 @@ class ShellIntegration(QObject):
         paste_mode_group.triggered.connect(_on_paste_mode_changed)
 
         action_start.triggered.connect(lambda: self._log_event("tray_start_clicked"))
+        action_continuous.triggered.connect(lambda: self._log_event("tray_continuous_clicked"))
         action_stop.triggered.connect(lambda: self._log_event("tray_stop_clicked"))
         action_settings.triggered.connect(self._on_settings)
-        action_show_panel.triggered.connect(lambda: self.show_status_panel("idle"))
+        action_show_panel.triggered.connect(self._toggle_status_panel)
         action_exit.triggered.connect(self._on_exit)
 
         self._action_start = action_start
@@ -206,6 +310,7 @@ class ShellIntegration(QObject):
 
         menu.addSection("Dictation")
         menu.addAction(action_start)
+        menu.addAction(action_continuous)
         menu.addAction(action_stop)
         menu.addSection("Mode")
         menu.addMenu(paste_mode_menu)
@@ -214,6 +319,7 @@ class ShellIntegration(QObject):
             profile_menu = QMenu("Profile", menu)
             profile_group = QActionGroup(profile_menu)
             profile_group.setExclusive(True)
+            self._profile_actions: list[QAction] = []
 
             for profile in self._model_manager.list_profiles():
                 action = QAction(profile.display_name, profile_menu)
@@ -224,6 +330,7 @@ class ShellIntegration(QObject):
                 action.setActionGroup(profile_group)
                 action.setData(profile.canonical_name)
                 profile_menu.addAction(action)
+                self._profile_actions.append(action)
 
             def _on_profile_changed(action: QAction) -> None:
                 new_profile = action.data()
@@ -292,6 +399,8 @@ class ShellIntegration(QObject):
 
     def _on_settings(self) -> None:
         self._log_event("tray_settings_opened")
+        # Capture current profile before dialog may change it
+        self._pre_dialog_profile = self._settings.model_profile
         dialog = SettingsDialog(
             settings=self._settings,
             audio_capture=None,
@@ -299,13 +408,34 @@ class ShellIntegration(QObject):
             glossary_store=self._glossary_store,
             parent=None,
         )
+        dialog.settings_applied.connect(self._apply_updated_settings)
         dialog.exec()
+
+    def _apply_updated_settings(self) -> None:
+        old_profile = getattr(self, "_pre_dialog_profile", None)
+        self.update_profile_tooltip("")
+        if not self.register_hotkeys():
+            self.show_notification(
+                "Spanglish Dictation",
+                "Could not register the selected global hotkeys. Try another combination.",
+            )
+        self._sync_profile_menu()
+        self.settings_updated.emit()
+        # If model profile changed via settings dialog, trigger profile reload
+        new_profile = self._settings.model_profile
+        if old_profile is not None and new_profile != old_profile:
+            self.profile_changed.emit(new_profile)
+
+    def _sync_profile_menu(self) -> None:
+        """Sync tray Profile submenu checkmarks with current settings."""
+        for action in getattr(self, "_profile_actions", []):
+            action.setChecked(action.data() == self._settings.model_profile)
 
     # ------------------------------------------------------------------
     # Status panel
     # ------------------------------------------------------------------
 
-    def show_status_panel(self, status: str) -> None:
+    def show_status_panel(self, status: str, detail: str = "") -> None:
         """Show or update the floating status panel."""
         if self._status_panel is None:
             self._status_panel = self._create_status_panel()
@@ -315,6 +445,8 @@ class ShellIntegration(QObject):
 
         color = self._STATUS_COLORS.get(status, "#9E9E9E")
         label = self._STATUS_LABELS.get(status, status.capitalize())
+        if detail:
+            label = detail
         if self._model_manager is not None:
             try:
                 profile = self._model_manager.get_profile(self._settings.model_profile)
@@ -330,11 +462,15 @@ class ShellIntegration(QObject):
 
         panel = self._status_panel
         panel.setStyleSheet(
-            f"background-color: {color}; border-radius: 10px; padding: 10px;"
+            f"background-color: rgba({self._hex_to_rgba(color, 200)}); "
+            f"border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 10px;"
         )
+        panel.adjustSize()
+        self._position_status_panel(panel)
         panel.show()
         panel.raise_()
-        panel.activateWindow()
+        if hasattr(self, "_action_show_panel") and self._action_show_panel is not None:
+            self._action_show_panel.setText("Hide Status Panel")
 
         # Auto-hide after 3s in ready state
         if status == "ready":
@@ -351,6 +487,15 @@ class ShellIntegration(QObject):
             self._auto_hide_timer.stop()
         if self._status_panel is not None:
             self._status_panel.hide()
+        if hasattr(self, "_action_show_panel") and self._action_show_panel is not None:
+            self._action_show_panel.setText("Show Status Panel")
+
+    def _toggle_status_panel(self) -> None:
+        """Toggle status panel visibility from tray menu."""
+        if self._status_panel is not None and self._status_panel.isVisible():
+            self._hide_status_panel()
+        else:
+            self.show_status_panel("idle")
 
     def _create_status_panel(self) -> QWidget:
         panel = QWidget()
@@ -360,7 +505,9 @@ class ShellIntegration(QObject):
             | Qt.Tool
             | Qt.WindowDoesNotAcceptFocus
         )
+        panel.setAttribute(Qt.WA_ShowWithoutActivating, True)
         panel.setAttribute(Qt.WA_TranslucentBackground, True)
+        panel.setMinimumSize(QSize(240, 50))
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 8, 12, 8)
@@ -373,36 +520,73 @@ class ShellIntegration(QObject):
         self._status_label.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
         top_layout.addWidget(self._status_label, stretch=1)
 
-        close_btn = QPushButton("x", panel)
+        close_btn = QPushButton("\u2715", panel)
         close_btn.setFlat(True)
-        close_btn.setStyleSheet("color: white; font-weight: bold; font-size: 12px;")
-        close_btn.setMaximumWidth(24)
-        close_btn.setMaximumHeight(24)
+        close_btn.setFixedSize(28, 28)
+        close_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        close_btn.setStyleSheet(
+            "QPushButton { color: rgba(255,255,255,0.8); font-size: 16px; "
+            "border: none; border-radius: 14px; background: rgba(0,0,0,0.2); }"
+            "QPushButton:hover { background: rgba(255,255,255,0.3); color: white; }"
+        )
         close_btn.clicked.connect(self._hide_status_panel)
         top_layout.addWidget(close_btn)
 
         layout.addLayout(top_layout)
 
-        shadow = QGraphicsDropShadowEffect(panel)
-        shadow.setBlurRadius(20)
-        shadow.setColor(QColor(0, 0, 0, 160))
-        shadow.setOffset(0, 6)
-        panel.setGraphicsEffect(shadow)
-
-        # Position bottom-right of primary screen
-        screen = QApplication.primaryScreen()
-        if screen is not None:
-            geo = screen.availableGeometry()
-            panel.resize(220, 60)
-            x = geo.right() - panel.width() - 20
-            y = geo.bottom() - panel.height() - 20
-            panel.move(x, y)
+        self._position_status_panel(panel)
 
         return panel
+
+    def _position_status_panel(self, panel: QWidget) -> None:
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        geo = screen.availableGeometry()
+        panel.adjustSize()
+        x = geo.right() - panel.width() - 20
+        y = geo.bottom() - panel.height() - 20
+        panel.move(x, y)
+
+    @staticmethod
+    def _parse_hotkey(value: str) -> tuple[int, int, str] | None:
+        tokens = [token.strip() for token in value.split("+") if token.strip()]
+        if len(tokens) < 2:
+            return None
+
+        key_token = tokens[-1].upper()
+        modifier_tokens = [token.upper() for token in tokens[:-1]]
+        modifiers = 0
+        for token in modifier_tokens:
+            mod = _MODIFIER_MAP.get(token)
+            if mod is None:
+                return None
+            modifiers |= mod
+
+        if modifiers == 0:
+            return None
+
+        # Look up virtual key code
+        vk_code = _VK_MAP.get(key_token)
+        if vk_code is None:
+            # Single alphanumeric character
+            if len(key_token) == 1 and key_token.isalnum():
+                vk_code = ord(key_token)
+            else:
+                return None
+
+        return modifiers, vk_code, "+".join([*modifier_tokens, key_token])
 
     # ------------------------------------------------------------------
     # Icon helper
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _hex_to_rgba(hex_color: str, alpha: int = 255) -> str:
+        """Convert '#RRGGBB' to 'R, G, B, A' for use in rgba() CSS."""
+        hex_color = hex_color.lstrip("#")
+        r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+        return f"{r}, {g}, {b}, {alpha}"
 
     @staticmethod
     def _create_fallback_icon() -> QPixmap:

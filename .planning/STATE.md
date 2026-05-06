@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Phase 5 Spanglish Glossary complete
-last_updated: "2026-05-05T17:59:58.357Z"
+last_updated: "2026-05-05T22:20:18.4291450-06:00"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -50,24 +50,27 @@ Plan: 4 of 4
 - 2026-05-05: **04-02 Confirmation Mode complete** — editable confirm-before-paste flow wired through DictationLoop and main
 - 2026-05-05: **04-03 Tray Polish complete** — grouped tray menu, state-aware actions, dismissible status panel, double-click reveal
 - 2026-05-05: Phase 5 Spanglish Glossary plans created (05-01, 05-02, 05-03)
+- 2026-05-05: Fixed whisper.cpp input normalization, language propagation, and toggle-stop transcription so desktop dictation matches the real audio pipeline
+- 2026-05-05: Replaced broken Win32 hotkey handling with pynput global hotkeys, added continuous dictation, and synced settings changes back into the live tray shell
+- 2026-05-05: Hardened runtime reliability with atomic settings saves, more tolerant VAD/paste retries, sample-rate negotiation for microphone backends, and full regression coverage (378 passed, 3 skipped)
 
 ## Pending Todos
 
 - Side-load local VAD assets (WebRTC, Silero) when needed for benchmarks
 - Execute ASR/VAD benchmarks for available models (base, small)
-- Run pytest on all tests locally (Python toolchain unavailable in execution environment)
-- Ready for Phase 5 (Spanglish Glossary) after Phase 4 complete
+- Run manual end-to-end verification on the Logitech Brio path across MME/WASAPI and confirm global hotkeys behave correctly in UAT
+- Execute Phase 5 (Spanglish Glossary) now that the post-Phase-5 bug-fix and polish pass is committed
 
 ## Blockers/Concerns
 
 1. **GSD `gsd-sdk init` requires Claude login** — Canonical files hand-written; future `/gsd-*` commands in OpenCode work fine
 2. **webrtcvad has no PyPI wheel for Windows** — Resolved by `webrtcvad-wheels==2.0.11` in pyproject.toml; import path verified as `import webrtcvad`
-3. **Python toolchain missing in execution environment** — Tests written but not executable; requires local Python 3.11+ install
+3. **Manual device/backend validation still required** — Automated tests pass, but Logitech Brio behavior across MME/WASAPI and real global hotkey capture still needs direct UAT confirmation
 
 ## Session Continuity
 
-Last session: 2026-05-05T17:21:12.268Z
-Stopped at: Phase 5 Spanglish Glossary complete
+Last session: 2026-05-05T22:20:18.4291450-06:00
+Stopped at: Post-Phase 5 bug-fix and polish session complete
 Resume file: None
 
 ## Task Status
@@ -80,13 +83,13 @@ Resume file: None
 | 4. MVP dictation loop | DONE | 02-01 through 02-05 complete; full push-to-talk loop wired |
 | 5. Model profiles | DONE | Phase 3 complete |
 | 6. GUI/tray polish | DONE | 04-01 through 04-03 complete |
-| 7. Spanglish glossary | PLANNED | 05-01 through 05-03 ready |
+| 7. Spanglish glossary | READY | 05-01 through 05-03 ready; follow-up bug-fix/polish pass committed |
 | 8. Packaging/release | READY | Unblocked pending Tasks 5-7 |
 
 ## Next Action
 
-1. Execute Phase 5 with `/gsd-execute-phase 5`
-2. Run `python src/main.py` to verify tray icon, settings dialog, confirmation mode UX
+1. Run `python src/main.py` and verify Brio dictation works on the intended backend in UAT
+2. Execute Phase 5 with `/gsd-execute-phase 5`
 3. MVP can use `ggml-base.bin` as default shipping model
 
 ## Session Handoff

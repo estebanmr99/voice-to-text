@@ -12,11 +12,11 @@ class TestSettingsStoreDefaults:
 
     def test_default_hotkey_push_to_talk(self, tmp_path: Path) -> None:
         store = SettingsStore(path=tmp_path / "settings.json")
-        assert store.hotkey_push_to_talk == "Ctrl+Alt+D"
+        assert store.hotkey_push_to_talk == "Ctrl+Shift+Space"
 
     def test_default_hotkey_toggle(self, tmp_path: Path) -> None:
         store = SettingsStore(path=tmp_path / "settings.json")
-        assert store.hotkey_toggle == "Ctrl+Alt+T"
+        assert store.hotkey_toggle == "Ctrl+Shift+D"
 
     def test_default_audio_device_index(self, tmp_path: Path) -> None:
         store = SettingsStore(path=tmp_path / "settings.json")
@@ -70,7 +70,7 @@ class TestSettingsStorePersistence:
         path = tmp_path / "settings.json"
         path.write_text("this is not json", encoding="utf-8")
         store = SettingsStore(path=path)
-        assert store.hotkey_push_to_talk == "Ctrl+Alt+D"
+        assert store.hotkey_push_to_talk == "Ctrl+Shift+Space"
         assert store.language == "auto"
 
     def test_non_dict_file_falls_back_to_defaults(self, tmp_path: Path) -> None:

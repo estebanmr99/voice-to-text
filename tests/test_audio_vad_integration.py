@@ -25,62 +25,64 @@ class TestDirectBlockFeeding:
     def test_synthetic_audio_produces_expected_events(self, mock_webrtcvad, sample_audio_16khz):
         """Feed 30 ms blocks directly to SpeechDetector and verify events."""
         blocksize = 480
-        num_blocks = len(sample_audio_16khz) // blocksize
-
-        # Segment pattern: 10 blocks silence, 10 speech, 10 silence, 10 speech, 10 silence
+        # Pattern: 10 silence, 10 speech, 30 silence, 10 speech, 30 silence
         is_speech_pattern = (
             [False] * 10
             + [True] * 10
-            + [False] * 10
+            + [False] * 30
             + [True] * 10
-            + [False] * 10
+            + [False] * 30
         )
-        mock_webrtcvad.is_speech.side_effect = is_speech_pattern[:num_blocks]
+        num_blocks = len(is_speech_pattern)
+        # Generate enough audio for the pattern
+        audio = np.zeros(num_blocks * blocksize, dtype=np.int16)
+        mock_webrtcvad.is_speech.side_effect = is_speech_pattern
 
         detector = SpeechDetector(aggressiveness=1, vad_backend=mock_webrtcvad)
         events = []
 
         for i in range(num_blocks):
-            block = sample_audio_16khz[i * blocksize : (i + 1) * blocksize]
+            block = audio[i * blocksize : (i + 1) * blocksize]
             event = detector.process_frame(block)
             if event in (VADEvent.SPEECH_START, VADEvent.SPEECH_END):
                 events.append((i, event))
 
         # SPEECH_START after 3 consecutive speech frames (blocks 10,11,12)
         assert events[0] == (12, VADEvent.SPEECH_START)
-        # SPEECH_END after 10 consecutive silence frames (blocks 20..29)
-        assert events[1] == (29, VADEvent.SPEECH_END)
-        # Second speech start (blocks 30,31,32)
-        assert events[2] == (32, VADEvent.SPEECH_START)
-        # Second speech end (blocks 40..49)
-        assert events[3] == (49, VADEvent.SPEECH_END)
+        # SPEECH_END after 30 consecutive silence frames (blocks 20..49)
+        assert events[1] == (49, VADEvent.SPEECH_END)
+        # Second speech start (blocks 50,51,52)
+        assert events[2] == (52, VADEvent.SPEECH_START)
+        # Second speech end (blocks 60..89)
+        assert events[3] == (89, VADEvent.SPEECH_END)
 
     def test_buffer_contains_correct_number_of_frames(self, mock_webrtcvad, sample_audio_16khz):
         """The accumulated buffer should contain every speech frame between start and end."""
         blocksize = 480
-        num_blocks = len(sample_audio_16khz) // blocksize
-
+        # Pattern: 10 silence, 10 speech, 30 silence, 10 speech, 30 silence
         is_speech_pattern = (
             [False] * 10
             + [True] * 10
-            + [False] * 10
+            + [False] * 30
             + [True] * 10
-            + [False] * 10
+            + [False] * 30
         )
-        mock_webrtcvad.is_speech.side_effect = is_speech_pattern[:num_blocks]
+        num_blocks = len(is_speech_pattern)
+        audio = np.zeros(num_blocks * blocksize, dtype=np.int16)
+        mock_webrtcvad.is_speech.side_effect = is_speech_pattern
 
         detector = SpeechDetector(aggressiveness=1, vad_backend=mock_webrtcvad)
         for i in range(num_blocks):
-            block = sample_audio_16khz[i * blocksize : (i + 1) * blocksize]
+            block = audio[i * blocksize : (i + 1) * blocksize]
             detector.process_frame(block)
 
         buffer = detector.speech_buffer
         # The buffer accumulates from SPEECH_START through SPEECH_END,
         # including the trailing silence frames (they are buffered before
         # the silence threshold triggers the end event).
-        # Second utterance: blocks 32-49 inclusive = 18 frames = 8640 samples
+        # Second utterance: blocks 52-89 inclusive = 38 frames
         # (The first utterance was cleared when the second SPEECH_START fired.)
-        assert len(buffer) == 18 * blocksize
+        assert len(buffer) == 38 * blocksize
 
 
 # ---------------------------------------------------------------------------
@@ -92,16 +94,17 @@ class TestAudioCaptureToVadPipeline:
     def test_capture_callback_feeds_detector(self, mock_sounddevice, mock_webrtcvad, sample_audio_16khz):
         """AudioCapture's callback mechanism delivers blocks that SpeechDetector can process."""
         blocksize = 480
-        num_blocks = len(sample_audio_16khz) // blocksize
-
+        # Pattern: 10 silence, 10 speech, 30 silence, 10 speech, 30 silence
         is_speech_pattern = (
             [False] * 10
             + [True] * 10
-            + [False] * 10
+            + [False] * 30
             + [True] * 10
-            + [False] * 10
+            + [False] * 30
         )
-        mock_webrtcvad.is_speech.side_effect = is_speech_pattern[:num_blocks]
+        num_blocks = len(is_speech_pattern)
+        audio = np.zeros(num_blocks * blocksize, dtype=np.int16)
+        mock_webrtcvad.is_speech.side_effect = is_speech_pattern
 
         detector = SpeechDetector(aggressiveness=1, vad_backend=mock_webrtcvad)
         events = []
@@ -116,7 +119,7 @@ class TestAudioCaptureToVadPipeline:
 
         try:
             for i in range(num_blocks):
-                block = sample_audio_16khz[i * blocksize : (i + 1) * blocksize]
+                block = audio[i * blocksize : (i + 1) * blocksize]
                 # Simulate PortAudio callback injection
                 cap._stream_callback(block.reshape(-1, 1), blocksize, None, None)
             # Allow consumer thread to drain the queue

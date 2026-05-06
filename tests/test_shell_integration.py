@@ -8,11 +8,23 @@ import pytest
 
 
 @pytest.fixture
+def mock_pynput():
+    """Mock pynput.keyboard.GlobalHotKeys for hotkey tests."""
+    mock_listener = MagicMock()
+    mock_listener.daemon = True
+    with patch("shell_integration.pynput_keyboard") as mock_kb:
+        mock_kb.GlobalHotKeys.return_value = mock_listener
+        yield mock_kb
+
+
+# Legacy fixture kept for compatibility with tests that reference it
+@pytest.fixture
 def mock_user32():
-    with patch("shell_integration.ctypes.windll.user32") as mock:
-        mock.RegisterHotKey.return_value = 1
-        mock.UnregisterHotKey.return_value = 1
-        yield mock
+    with patch("shell_integration.pynput_keyboard") as mock_kb:
+        mock_listener = MagicMock()
+        mock_listener.daemon = True
+        mock_kb.GlobalHotKeys.return_value = mock_listener
+        yield mock_kb
 
 
 class TestShellIntegration:
@@ -62,18 +74,38 @@ class TestShellIntegration:
         result = shell.register_hotkeys()
         assert result is True
         assert shell._registered is True
-        mock_user32.RegisterHotKey.assert_called_once()
+        # pynput GlobalHotKeys should be created with a dict of hotkeys
+        assert mock_user32.GlobalHotKeys.called
 
     def test_hotkey_unregistration(self, shell, mock_user32):
         shell.register_hotkeys()
         shell.unregister_hotkeys()
         assert shell._registered is False
-        mock_user32.UnregisterHotKey.assert_called_once()
 
     def test_hotkey_registration_failure(self, shell, mock_user32):
-        mock_user32.RegisterHotKey.return_value = 0
+        mock_user32.GlobalHotKeys.side_effect = Exception("test error")
         result = shell.register_hotkeys()
         assert result is False
+
+    def test_hotkey_registration_uses_saved_settings(self, shell, mock_user32):
+        shell._settings.hotkey_toggle = "Ctrl+Shift+G"
+        shell._settings.hotkey_push_to_talk = "Ctrl+Alt+F"
+
+        shell.register_hotkeys()
+
+        call_args = mock_user32.GlobalHotKeys.call_args[0][0]
+        assert "<ctrl>+<shift>+g" in call_args
+        assert "<ctrl>+<alt>+f" in call_args
+
+    def test_duplicate_hotkeys_register_once(self, shell, mock_user32):
+        shell._settings.hotkey_toggle = "Ctrl+Alt+F"
+        shell._settings.hotkey_push_to_talk = "Ctrl+Alt+F"
+
+        shell.register_hotkeys()
+
+        call_args = mock_user32.GlobalHotKeys.call_args[0][0]
+        # Only one hotkey registered due to deduplication
+        assert len(call_args) == 1
 
     def test_tray_menu_has_actions(self, shell, qapp):
         tray = shell.setup_tray()
@@ -117,6 +149,7 @@ class TestShellIntegration:
         # Check flags
         flags = panel.windowFlags()
         assert flags & Qt.WindowStaysOnTopHint
+        assert flags & Qt.WindowDoesNotAcceptFocus
 
     def test_status_panel_auto_hide_ready(self, shell, qapp):
         shell.show_status_panel("ready")
@@ -134,7 +167,8 @@ class TestShellIntegration:
     def test_hotkey_signal_emitted(self, shell):
         received = []
         shell.hotkey_pressed.connect(lambda hid: received.append(hid))
-        shell._event_filter.hotkey_pressed.emit(1)
+        # Simulate pynput callback firing
+        shell.hotkey_pressed.emit(1)
         assert received == [1]
 
     def test_update_tray_tooltip(self, shell, qapp):
@@ -187,7 +221,7 @@ class TestShellIntegration:
         target.trigger()
         assert shell._settings.model_profile == "cpu-high-accuracy"
 
-    def test_profile_submenu_skipped_without_model_manager(self, qapp, mock_user32):
+    def test_profile_submenu_skipped_without_model_manager(self, qapp, mock_pynput):
         from shell_integration import ShellIntegration
         from settings_store import SettingsStore
 
@@ -201,6 +235,11 @@ class TestShellIntegration:
         shell.show_status_panel("idle")
         assert shell._status_label is not None
         assert "CPU Portable" in shell._status_label.text()
+
+    def test_status_panel_prefers_detail_message(self, shell, qapp):
+        shell.show_status_panel("ready", "No speech detected")
+        assert shell._status_label is not None
+        assert "No speech detected" in shell._status_label.text()
 
     def test_update_profile_tooltip(self, shell, qapp):
         shell.setup_tray()

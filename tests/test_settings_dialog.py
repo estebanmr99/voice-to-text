@@ -32,7 +32,7 @@ class TestSettingsDialog:
     def test_dialog_constructs_and_populates(self, qapp, settings, model_manager):
         from settings_dialog import SettingsDialog
 
-        with patch("settings_dialog.AudioCapture.list_devices", return_value=[{"index": 0, "name": "Mock Mic", "default_samplerate": 16000}]):
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[{"index": 0, "name": "Mock Mic", "display_name": "Mock Mic — WASAPI (1 channel)", "default_samplerate": 16000}]):
             dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
 
         assert dialog.hotkey_push_to_talk_input.text() == "Ctrl+Alt+D"
@@ -40,6 +40,7 @@ class TestSettingsDialog:
         assert dialog.vad_profile_combo.currentData() == "webrtc"
         assert dialog.paste_mode_combo.currentData() == "immediate"
         assert dialog.language_combo.currentData() == "auto"
+        assert dialog.audio_device_combo.itemText(1) == "Mock Mic — WASAPI (1 channel)"
 
     def test_save_writes_and_calls_save(self, qapp, settings, model_manager):
         from settings_dialog import SettingsDialog
@@ -54,8 +55,21 @@ class TestSettingsDialog:
 
         assert settings.hotkey_push_to_talk == "Ctrl+Alt+F"
         assert settings.hotkey_toggle == "Win+Shift+G"
-        settings.save.assert_called()
+        settings.begin_batch.assert_called()
+        settings.end_batch.assert_called()
         settings.set.assert_any_call("glossary_path", "C:/tmp/glossary.json")
+
+    def test_save_emits_settings_applied(self, qapp, settings, model_manager):
+        from settings_dialog import SettingsDialog
+
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
+
+        seen = []
+        dialog.settings_applied.connect(lambda: seen.append(True))
+        dialog._on_save()
+
+        assert seen == [True]
 
     def test_cancel_does_not_save(self, qapp, settings, model_manager):
         from settings_dialog import SettingsDialog

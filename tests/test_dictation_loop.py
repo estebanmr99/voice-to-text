@@ -10,6 +10,14 @@ import pytest
 from dictation_loop import DictationLoop, DictationState
 
 
+def _wait_for_transcription(loop: DictationLoop, qapp, timeout: float = 5.0) -> None:
+    """Wait for the background transcription thread to finish and process Qt events."""
+    thread = loop._transcribe_thread
+    if thread is not None:
+        thread.join(timeout=timeout)
+    qapp.processEvents()
+
+
 @pytest.fixture
 def mock_deps():
     """Return mock dependencies for DictationLoop."""
@@ -95,7 +103,9 @@ class TestAudioFlow:
         mock_deps["paste_controller"].paste.return_value = True
 
         loop._on_audio_block(frame)
-        assert loop.state in (DictationState.READY, DictationState.PROCESSING)
+        _wait_for_transcription(loop, qapp)
+
+        assert loop.state is DictationState.READY
 
     def test_successful_transcription_pastes_text(self, loop, mock_deps, qapp):
         from speech_detector import VADEvent
@@ -110,13 +120,10 @@ class TestAudioFlow:
         loop.text_pasted.connect(lambda t: received.append(t))
 
         loop._on_audio_block(frame)
-        # Wait for timer in tests — directly process if needed
-        if loop._auto_reset_timer is not None:
-            loop._auto_reset_timer.stop()
-        loop._auto_reset_to_idle()
+        _wait_for_transcription(loop, qapp)
 
         mock_deps["transcriber"].transcribe.assert_called_once()
-        mock_deps["paste_controller"].paste.assert_called_once()
+        mock_deps["paste_controller"].paste.assert_called_once_with("hello world")
         assert received == ["hello world"]
 
     def test_empty_audio_goes_ready_no_paste(self, loop, mock_deps, qapp):
@@ -128,10 +135,10 @@ class TestAudioFlow:
         mock_deps["transcriber"].transcribe.return_value = ""
 
         loop._on_audio_block(frame)
-        if loop._auto_reset_timer is not None:
-            loop._auto_reset_timer.stop()
+        _wait_for_transcription(loop, qapp)
 
         mock_deps["paste_controller"].paste.assert_not_called()
+        assert loop.state is DictationState.READY
 
     def test_confirmation_mode_emits_transcription_ready(self, loop, mock_deps, qapp):
         from speech_detector import VADEvent
@@ -145,6 +152,7 @@ class TestAudioFlow:
         received = []
         loop.transcription_ready.connect(lambda t: received.append(t))
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
 
         assert received == ["raw text"]
         assert loop.state is DictationState.READY
@@ -159,6 +167,8 @@ class TestAudioFlow:
         mock_deps["transcriber"].transcribe.return_value = "raw text"
 
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
+
         mock_deps["paste_controller"].paste.assert_not_called()
 
     def test_confirm_paste_uses_edited_text(self, loop, mock_deps):
@@ -181,6 +191,8 @@ class TestAudioFlow:
         mock_deps["paste_controller"].paste.return_value = True
 
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
+
         mock_deps["paste_controller"].paste.assert_called_once_with("hello world")
 
 
@@ -207,6 +219,7 @@ class TestErrorHandling:
         loop.error_occurred.connect(lambda e: received.append(e))
 
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
         if loop._auto_reset_timer is not None:
             loop._auto_reset_timer.stop()
 
@@ -226,6 +239,7 @@ class TestErrorHandling:
         loop.error_occurred.connect(lambda e: received.append(e))
 
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
         if loop._auto_reset_timer is not None:
             loop._auto_reset_timer.stop()
 
@@ -241,6 +255,8 @@ class TestErrorHandling:
         mock_deps["transcriber"].transcribe.side_effect = RuntimeError("model missing")
 
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
+
         assert loop.state is DictationState.ERROR
 
 
@@ -254,8 +270,9 @@ class TestAutoReset:
         mock_deps["transcriber"].transcribe.return_value = ""
 
         loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
         assert loop.state is DictationState.READY
-        # Simulate timer timeout
+
         loop._auto_reset_to_idle()
         assert loop.state is DictationState.IDLE
 
@@ -287,7 +304,6 @@ class TestPostProcessorIntegration:
         paste_controller = MagicMock()
         diagnostics = MagicMock()
         post_processor = MagicMock()
-        # By default, pass through
         post_processor.normalize.side_effect = lambda t: t.upper()
 
         return {
@@ -325,8 +341,7 @@ class TestPostProcessorIntegration:
         pp_mock_deps["paste_controller"].paste.return_value = True
 
         pp_loop._on_audio_block(frame)
-        if pp_loop._auto_reset_timer is not None:
-            pp_loop._auto_reset_timer.stop()
+        _wait_for_transcription(pp_loop, qapp)
 
         pp_mock_deps["post_processor"].normalize.assert_called_once_with("mergear el pr")
         pp_mock_deps["paste_controller"].paste.assert_called_once_with("mergear el PR")
@@ -347,6 +362,7 @@ class TestPostProcessorIntegration:
         received = []
         pp_loop.transcription_ready.connect(lambda t: received.append(t))
         pp_loop._on_audio_block(frame)
+        _wait_for_transcription(pp_loop, qapp)
 
         assert received == ["mergear el PR"]
         pp_mock_deps["post_processor"].normalize.assert_called_once_with("mergear el pr")
@@ -372,8 +388,7 @@ class TestPostProcessorIntegration:
         mock_deps["paste_controller"].paste.return_value = True
 
         loop._on_audio_block(frame)
-        if loop._auto_reset_timer is not None:
-            loop._auto_reset_timer.stop()
+        _wait_for_transcription(loop, qapp)
 
         mock_deps["paste_controller"].paste.assert_called_once_with("mergear el pr")
 
@@ -391,8 +406,7 @@ class TestPostProcessorIntegration:
         pp_mock_deps["transcriber"].transcribe.return_value = "raw text"
 
         pp_loop._on_audio_block(frame)
-        if pp_loop._auto_reset_timer is not None:
-            pp_loop._auto_reset_timer.stop()
+        _wait_for_transcription(pp_loop, qapp)
 
         assert pp_mock_deps["post_processor"].normalize.call_count == 1
 
@@ -417,8 +431,6 @@ class TestPostProcessorIntegration:
         mock_deps["paste_controller"].paste.return_value = True
 
         loop._on_audio_block(frame)
-        if loop._auto_reset_timer is not None:
-            loop._auto_reset_timer.stop()
+        _wait_for_transcription(loop, qapp)
 
-        # Should still paste raw text without crash
         mock_deps["paste_controller"].paste.assert_called_once_with("raw text")

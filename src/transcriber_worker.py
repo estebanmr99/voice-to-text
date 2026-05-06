@@ -15,6 +15,8 @@ import logging
 import multiprocessing
 from typing import Any
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 # Minimum audio length (in samples @ 16 kHz) before we bother the model.
@@ -96,7 +98,12 @@ def run_worker(
             logger.debug("Worker received shutdown sentinel")
             break
 
-        audio_array, sample_rate = payload
+        # Support both (audio, sample_rate) and (audio, sample_rate, language)
+        if len(payload) == 3:
+            audio_array, sample_rate, language = payload
+        else:
+            audio_array, sample_rate = payload
+            language = "auto"
 
         # Skip very short / empty audio
         if (
@@ -107,7 +114,18 @@ def run_worker(
             continue
 
         try:
-            segments = model.transcribe(audio_array)
+            # pywhispercpp expects float32 audio normalized to [-1.0, 1.0]
+            if audio_array.dtype == np.int16:
+                audio_array = audio_array.astype(np.float32) / 32768.0
+            elif audio_array.dtype != np.float32:
+                audio_array = audio_array.astype(np.float32)
+
+            # Pass language to whisper for better multilingual detection
+            transcribe_kwargs = {}
+            if language and language != "auto":
+                transcribe_kwargs["language"] = language
+
+            segments = model.transcribe(audio_array, **transcribe_kwargs)
             text = " ".join(s.text for s in segments).strip()
             result_queue.put({"text": text, "error": None})
         except Exception as exc:  # pragma: no cover

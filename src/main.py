@@ -180,11 +180,14 @@ def main() -> int:
 
     shell.profile_changed.connect(_on_profile_changed)
     shell.register_hotkeys()
+    shell.settings_updated.connect(
+        lambda: audio_capture.set_device_index(settings.audio_device_index)
+    )
 
     # Connect signals
     shell.hotkey_pressed.connect(lambda _hid: dictation_loop.toggle())
     dictation_loop.state_changed.connect(
-        lambda state, msg: shell.show_status_panel(state.value)
+        lambda state, msg: shell.show_status_panel(state.value, msg)
     )
 
     def _on_transcription_ready(text: str) -> None:
@@ -204,6 +207,8 @@ def main() -> int:
         text = action.text().replace("&", "")
         if text == "Start Dictation":
             action.triggered.connect(dictation_loop.start)
+        elif text == "Start Continuous":
+            action.triggered.connect(dictation_loop.start_continuous)
         elif text == "Stop Dictation":
             action.triggered.connect(dictation_loop.stop)
 

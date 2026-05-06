@@ -69,7 +69,7 @@ class SpeechDetector:
     """
 
     _SPEECH_THRESHOLD = 3   # frames
-    _SILENCE_THRESHOLD = 10  # frames
+    _SILENCE_THRESHOLD = 30  # frames (~900 ms at 30 ms/frame)
 
     def __init__(
         self,
