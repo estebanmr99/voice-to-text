@@ -60,6 +60,8 @@ class TestLicense:
 
 
 class TestReleaseDocs:
+    _RELEASE_NOTES_PATH = ROOT / "docs" / "releases" / "v0.1.0.md"
+
     def test_install_md_exists(self) -> None:
         assert (ROOT / "docs" / "INSTALL.md").is_file()
 
@@ -92,6 +94,44 @@ class TestReleaseDocs:
     def test_release_md_contains_smoke_command(self) -> None:
         text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")
         assert "powershell -ExecutionPolicy Bypass -File scripts/smoke_offline.ps1" in text
+
+    def test_canonical_release_notes_file_exists(self) -> None:
+        assert self._RELEASE_NOTES_PATH.is_file()
+
+    def test_canonical_release_notes_cover_public_release_contract(self) -> None:
+        text = self._RELEASE_NOTES_PATH.read_text(encoding="utf-8")
+        required_phrases = (
+            "Windows Offline Spanglish Dictation",
+            "fully offline",
+            "no telemetry",
+            "spanglish-dictation-portable-0.1.0.zip",
+            "side-load",
+            "docs/INSTALL.md",
+            "docs/PRIVACY.md",
+            "docs/MODEL-SIDELOADING.md",
+            "sbom.cdx.json",
+            "SHA256SUMS.txt",
+        )
+        for phrase in required_phrases:
+            assert phrase.lower() in text.lower(), (
+                f"missing canonical release-notes phrase: {phrase}"
+            )
+
+    def test_release_docs_reference_real_v0_1_0_publish_flow(self) -> None:
+        release_text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")
+        checklist_text = (ROOT / "docs" / "GITHUB-RELEASE-CHECKLIST.md").read_text(
+            encoding="utf-8"
+        )
+        required_phrases = (
+            "docs/releases/v0.1.0.md",
+            "gh release edit v0.1.0 --notes-file docs/releases/v0.1.0.md",
+            "https://github.com/estebanmr99/voice-to-text/releases",
+            "v0.1.0",
+        )
+        for phrase in required_phrases:
+            assert phrase in release_text or phrase in checklist_text, (
+                f"missing publish-flow phrase: {phrase}"
+            )
 
     def test_release_docs_cover_prepare_release_and_manual_verification(self) -> None:
         release_text = (ROOT / "docs" / "RELEASE.md").read_text(encoding="utf-8")
