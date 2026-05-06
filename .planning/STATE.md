@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Phase 5 Spanglish Glossary complete
-last_updated: "2026-05-05T22:20:18.4291450-06:00"
+last_updated: "2026-05-05T22:44:14.5365347-06:00"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -53,6 +53,7 @@ Plan: 4 of 4
 - 2026-05-05: Fixed whisper.cpp input normalization, language propagation, and toggle-stop transcription so desktop dictation matches the real audio pipeline
 - 2026-05-05: Replaced broken Win32 hotkey handling with pynput global hotkeys, added continuous dictation, and synced settings changes back into the live tray shell
 - 2026-05-05: Hardened runtime reliability with atomic settings saves, more tolerant VAD/paste retries, sample-rate negotiation for microphone backends, and full regression coverage (378 passed, 3 skipped)
+- 2026-05-05: Completed quick task 260505-v8d — publish-ready docs finalized, `.sisyphus/` removed from public repo path, GitHub repo created, and local release bundle verified
 
 ## Pending Todos
 
@@ -69,9 +70,9 @@ Plan: 4 of 4
 
 ## Session Continuity
 
-Last session: 2026-05-05T22:20:18.4291450-06:00
-Stopped at: Post-Phase 5 bug-fix and polish session complete
-Resume file: None
+Last session: 2026-05-05T22:44:14.5365347-06:00
+Stopped at: Quick task 260505-v8d complete
+Resume file: .planning/quick/260505-v8d-ensure-readme-install-docs-are-complete-/260505-v8d-SUMMARY.md
 
 ## Task Status
 
