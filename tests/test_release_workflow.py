@@ -121,6 +121,11 @@ class TestWorkflowContent:
         text = self._workflow_text()
         assert "softprops/action-gh-release" in text
 
+    def test_workflow_grants_contents_write_for_release_publication(self) -> None:
+        text = self._workflow_text()
+        assert "permissions:" in text
+        assert "contents: write" in text
+
     def test_workflow_uploads_sbom(self) -> None:
         text = self._workflow_text()
         assert "sbom.cdx.json" in text
