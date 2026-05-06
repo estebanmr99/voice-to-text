@@ -11,6 +11,7 @@ Pre-publish verification steps for a Spanglish Dictation release on GitHub.
 - [ ] No model binaries, CUDA/cuDNN DLLs, or .gguf files in the working tree
 - [ ] `models/` is in `.gitignore`
 - [ ] `dist/` is in `.gitignore`
+- [ ] `.sisyphus/` is excluded from the public repo path and ignored as local planning scratch
 - [ ] `README.md` references the correct version
 - [ ] `README.md` links to `docs/INSTALL.md`, `docs/RELEASE.md`, and the real GitHub Releases page
 
@@ -61,7 +62,7 @@ Triggered by pushing a `v*` tag:
 The workflow never downloads models, never references CUDA/cuDNN, and never
 installs `huggingface-cli`.
 
-GitHub Actions exists only to automate GitHub publishing after a `v*` tag. It is not part of runtime app behavior and does not weaken the app's no-runtime-network guarantee.
+GitHub Actions exists only to automate GitHub publishing after a `v*` tag. It is CI-time only, not part of runtime app behavior, and does not weaken the app's no-runtime-network guarantee.
 
 ## Before publishing
 

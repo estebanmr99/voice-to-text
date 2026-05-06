@@ -1,5 +1,8 @@
 name: Release
 
+# Tag-only publishing workflow for GitHub Releases assets.
+# This is release automation, not general CI and not runtime app behavior.
+
 on:
   push:
     tags:

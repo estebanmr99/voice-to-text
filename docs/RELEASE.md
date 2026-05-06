@@ -6,6 +6,8 @@ How to build, verify, and publish a Spanglish Dictation release.
 
 This repository uses GitHub Releases for distribution, but the app itself remains fully offline at runtime. Any GitHub Actions network activity happens only during CI-time publishing.
 
+The release workflow exists only to build and attach release assets after a version tag push. It is not general CI, not part of app startup, and not required to run the portable app locally.
+
 ### 0. Run the end-to-end local release command
 
 ```powershell
@@ -112,5 +114,6 @@ Copied into the portable zip at build time:
 - [ ] `SHA-256` checksums generated and verified
 - [ ] Portable zip extracted and launched on a clean Windows user account
 - [ ] Side-loaded model completes a real offline dictation smoke check
+- [ ] `.sisyphus/` planning scratch is excluded from the public repo and release path
 - [ ] Release notes drafted (see `.github/workflows/release.yml`)
 - [ ] GitHub release draft created with assets attached on [GitHub Releases](https://github.com/estebanmr99/voice-to-text/releases)

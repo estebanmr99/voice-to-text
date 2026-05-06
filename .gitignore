@@ -51,4 +51,4 @@ htmlcov/
 
 # GSD / planning (optional - uncomment if you want planning docs local-only)
 # .planning/
-# .sisyphus/
+.sisyphus/
