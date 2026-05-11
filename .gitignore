@@ -52,3 +52,6 @@ htmlcov/
 # GSD / planning (optional - uncomment if you want planning docs local-only)
 # .planning/
 .sisyphus/
+
+# Graps for not reading the code each time from Graphify
+graphify-out/

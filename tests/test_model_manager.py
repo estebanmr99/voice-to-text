@@ -99,8 +99,10 @@ class TestModelManagerRegistry:
         mgr = ModelManager(models_dir=tmp_path)
         profiles = mgr.list_profiles()
         assert {p.canonical_name for p in profiles} == {
+            "cpu-laptop",
             "cpu-portable",
             "cpu-high-accuracy",
+            "cpu-max-accuracy",
             "nvidia-dev",
         }
 
@@ -175,7 +177,7 @@ class TestModelManagerRegistry:
             encoding="utf-8",
         )
         mgr = ModelManager(models_dir=tmp_path)
-        assert len(mgr.list_profiles()) == 3
+        assert len(mgr.list_profiles()) == 5
 
 
 class TestModelManagerValidation:

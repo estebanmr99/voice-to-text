@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 # URLs for manual side-loading guidance (never fetched at runtime)
 _SIDeload_URLS: dict[str, str] = {
+    "tiny": (
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+        "ggml-tiny.bin"
+    ),
     "base": (
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
         "ggml-base.bin"
@@ -25,6 +29,10 @@ _SIDeload_URLS: dict[str, str] = {
     "small": (
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
         "ggml-small.bin"
+    ),
+    "large-v3": (
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+        "ggml-large-v3.bin"
     ),
 }
 
@@ -102,6 +110,21 @@ class ModelManager:
 
     _DEFAULT_MODELS: list[dict[str, Any]] = [
         {
+            "name": "tiny",
+            "filename": "ggml-tiny.bin",
+            "size_mb": 75,
+            "checksum_sha256": None,
+            "language": "auto",
+            "parameters": {"n_threads": 2},
+            "backend": "whisper.cpp",
+            "profile_compatibility": [
+                "cpu-laptop",
+                "cpu-portable",
+            ],
+            "source_url": _SIDeload_URLS["tiny"],
+            "license_status": "candidate",
+        },
+        {
             "name": "base",
             "filename": "ggml-base.bin",
             "size_mb": 141,
@@ -129,13 +152,41 @@ class ModelManager:
                 "cpu-portable",
                 "cpu-high-accuracy",
                 "nvidia-dev",
+                "cpu-max-accuracy",
             ],
             "source_url": _SIDeload_URLS["small"],
+            "license_status": "candidate",
+        },
+        {
+            "name": "large-v3",
+            "filename": "ggml-large-v3.bin",
+            "size_mb": 3000,
+            "checksum_sha256": None,
+            "language": "auto",
+            "parameters": {"n_threads": 8},
+            "backend": "whisper.cpp",
+            "profile_compatibility": [
+                "cpu-max-accuracy",
+                "cpu-high-accuracy",
+            ],
+            "source_url": _SIDeload_URLS["large-v3"],
             "license_status": "candidate",
         },
     ]
 
     _DEFAULT_PROFILES: list[dict[str, Any]] = [
+        {
+            "canonical_name": "cpu-laptop",
+            "display_name": "CPU Laptop",
+            "description": (
+                "Ultra-light whisper.cpp tiny model for low-RAM laptops "
+                "(4-8 GB). Fast but lower accuracy."
+            ),
+            "preferred_model": "tiny",
+            "fallback_order": ["base", "small"],
+            "backend_hint": "whisper.cpp",
+            "shipping_default": False,
+        },
         {
             "canonical_name": "cpu-portable",
             "display_name": "CPU Portable",
@@ -144,7 +195,7 @@ class ModelManager:
                 "without GPU"
             ),
             "preferred_model": "base",
-            "fallback_order": ["small"],
+            "fallback_order": ["tiny", "small"],
             "backend_hint": "whisper.cpp",
             "shipping_default": True,
         },
@@ -155,7 +206,19 @@ class ModelManager:
                 "Larger whisper.cpp model with better accuracy, slower on CPU"
             ),
             "preferred_model": "small",
-            "fallback_order": ["base"],
+            "fallback_order": ["base", "large-v3", "tiny"],
+            "backend_hint": "whisper.cpp",
+            "shipping_default": False,
+        },
+        {
+            "canonical_name": "cpu-max-accuracy",
+            "display_name": "CPU Max Accuracy",
+            "description": (
+                "Largest whisper.cpp large-v3 model for desktop workstations "
+                "(16+ GB RAM). Best accuracy for technical Spanglish, slowest."
+            ),
+            "preferred_model": "large-v3",
+            "fallback_order": ["small", "base"],
             "backend_hint": "whisper.cpp",
             "shipping_default": False,
         },
@@ -167,7 +230,7 @@ class ModelManager:
                 "NVIDIA RTX (dev only)"
             ),
             "preferred_model": "small",
-            "fallback_order": ["base"],
+            "fallback_order": ["large-v3", "base", "tiny"],
             "backend_hint": "faster-whisper",
             "shipping_default": False,
         },
