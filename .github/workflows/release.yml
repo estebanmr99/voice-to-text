@@ -35,6 +35,11 @@ jobs:
           $VERSION = "${{ github.ref_name }}" -replace '^v', ''
           .\scripts\prepare_release.ps1 -Version $VERSION
 
+      - name: Verify model integrity
+        shell: powershell
+        run: |
+          python -m pytest tests/test_model_integrity.py -q
+
       - name: Run offline smoke test
         shell: powershell
         run: .\scripts\smoke_offline.ps1
