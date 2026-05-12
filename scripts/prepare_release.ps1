@@ -90,7 +90,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Optional: verify local model file hashes if models are present
-$checksumsPath = Join-Path $root "models" "model_checksums.json"
+$checksumsPath = Join-Path (Join-Path $root "models") "model_checksums.json"
 if (Test-Path $checksumsPath) {
     $checksums = Get-Content $checksumsPath -Raw | ConvertFrom-Json
     Get-ChildItem (Join-Path $root "models") -Filter "*.bin" | ForEach-Object {
