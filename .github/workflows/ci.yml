@@ -1,0 +1,40 @@
+name: CI
+
+# Pull request and push-to-main validation.
+# Runs pytest, model integrity checks, and license validation.
+# Model-dependent tests skip gracefully when models are absent.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Verify model integrity
+        run: python -m pytest tests/test_model_integrity.py -q
+
+      - name: Check license bundle
+        run: python scripts/generate_license_bundle.py --check
