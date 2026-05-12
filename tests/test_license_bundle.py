@@ -128,11 +128,16 @@ class TestWriteFlag:
             tpn = Path(tmp) / "THIRD-PARTY-NOTICES.md"
             mn = Path(tmp) / "MODEL-NOTICES.md"
 
+            checksums_path = ROOT / "models" / "model_checksums.json"
+            checksums = json.loads(checksums_path.read_text())
+            _sha_base = checksums["ggml-base.bin"]["sha256"]
+            _sha_small = checksums["ggml-small.bin"]["sha256"]
+
             glb.run_write(
                 third_party_path=tpn,
                 model_notices_path=mn,
-                model_sha_base="60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
-                model_sha_small="1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+                model_sha_base=_sha_base,
+                model_sha_small=_sha_small,
                 model_source_url="https://huggingface.co/ggerganov/whisper.cpp/tree/main",
             )
 

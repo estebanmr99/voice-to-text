@@ -1,0 +1,10 @@
+{"id":"01","text":"Hello, how are you?","language":"en","tags":["english","greeting"]}
+{"id":"02","text":"Buenos días, ¿cómo estás?","language":"es","tags":["spanish","greeting"]}
+{"id":"03","text":"I need to merge the PR to the main branch","language":"en","tags":["spanglish","tech"]}
+{"id":"04","text":"The API endpoint returns a JSON response","language":"en","tags":["english","tech"]}
+{"id":"05","text":"Vamos a hacer el deploy del nuevo feature","language":"es","tags":["spanglish","tech"]}
+{"id":"06","text":"Por favor revísame el PR cuando tengas tiempo","language":"es","tags":["spanglish","tech"]}
+{"id":"07","text":"Create a new repository on GitHub","language":"en","tags":["english","tech"]}
+{"id":"08","text":"El servidor está caído hay que reiniciarlo","language":"es","tags":["spanish","tech"]}
+{"id":"09","text":"Check the CI pipeline for any failing tests","language":"en","tags":["english","tech"]}
+{"id":"10","text":"Necesito instalar las dependencias con pip","language":"es","tags":["spanglish","tech"]}

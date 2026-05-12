@@ -6,6 +6,7 @@ required privacy, licence, model, and release-process claims.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -158,8 +159,13 @@ class TestReleaseDocs:
 
 
 class TestModelSideloading:
-    _SHA_BASE = "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"
-    _SHA_SMALL = "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"
+    @property
+    def _SHA_BASE(self) -> str:
+        return json.loads(ROOT.joinpath("models", "model_checksums.json").read_text())["ggml-base.bin"]["sha256"]
+
+    @property
+    def _SHA_SMALL(self) -> str:
+        return json.loads(ROOT.joinpath("models", "model_checksums.json").read_text())["ggml-small.bin"]["sha256"]
 
     def test_sideloading_md_exists(self) -> None:
         assert (ROOT / "docs" / "MODEL-SIDELOADING.md").is_file()

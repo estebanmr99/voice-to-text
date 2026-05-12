@@ -5,6 +5,9 @@ models/
 *.bin
 *.gguf
 
+# But do commit the checksum source of truth
+!models/model_checksums.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -55,3 +58,6 @@ htmlcov/
 
 # Graps for not reading the code each time from Graphify
 graphify-out/
+
+# Eval audio (recorded locally, not committed)
+data/eval/*.wav

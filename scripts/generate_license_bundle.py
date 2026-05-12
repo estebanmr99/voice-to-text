@@ -13,6 +13,7 @@ that MUST appear across the two generated notice files.  --check fails
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -46,23 +47,15 @@ REQUIRED_NOTICE_TOKENS = frozenset(
 SBOM_COMMAND = "python -m cyclonedx_py requirements requirements.txt -o dist/release/sbom.cdx.json"
 
 # ------------------------------------------------------------------
-# Model metadata (from models/MODEL-REGISTRY.md)
+# Model metadata — single source of truth from models/model_checksums.json
 # ------------------------------------------------------------------
 
-MODEL_METADATA = {
-    "ggml-base.bin": {
-        "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
-        "size": "141.1 MB",
-        "profile": "CPU Portable",
-        "source": "https://huggingface.co/ggerganov/whisper.cpp/tree/main",
-    },
-    "ggml-small.bin": {
-        "sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
-        "size": "465.0 MB",
-        "profile": "CPU High Accuracy",
-        "source": "https://huggingface.co/ggerganov/whisper.cpp/tree/main",
-    },
-}
+_MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
+_CHECKSUMS_PATH = _MODELS_DIR / "model_checksums.json"
+if _CHECKSUMS_PATH.is_file():
+    MODEL_METADATA = json.loads(_CHECKSUMS_PATH.read_text(encoding="utf-8"))
+else:
+    MODEL_METADATA = {}
 
 
 # ------------------------------------------------------------------
@@ -341,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
             model_notices_path=mmn,
             model_sha_base=meta_base["sha256"],
             model_sha_small=meta_small["sha256"],
-            model_source_url=meta_base["source"],
+            model_source_url=meta_base["url"],
         )
         return 0
 
