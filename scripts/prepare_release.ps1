@@ -18,10 +18,10 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $releaseDir = Join-Path (Join-Path $root "dist") "release"
 
-Write-Host "=== Spanglish Dictation — Release Preparation v$Version ==="
+Write-Host "=== Spanglish Dictation - Release Preparation v$Version ==="
 
 # ------------------------------------------------------------------
-# Step 1 — Run tests
+# Step 1 - Run tests
 # ------------------------------------------------------------------
 Write-Host "`n[1/8] Running test suite..."
 python -m pytest $root\tests -q
@@ -30,7 +30,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ------------------------------------------------------------------
-# Step 2 — Generate licence bundle
+# Step 2 - Generate licence bundle
 # ------------------------------------------------------------------
 Write-Host "`n[2/8] Generating licence bundle..."
 & python (Join-Path (Join-Path $root "scripts") "generate_license_bundle.py") --write --output-dir (Join-Path $root "LICENSES")
@@ -39,7 +39,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ------------------------------------------------------------------
-# Step 3 — Generate SBOM
+# Step 3 - Generate SBOM
 # ------------------------------------------------------------------
 Write-Host "`n[3/8] Generating SBOM..."
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
@@ -49,7 +49,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ------------------------------------------------------------------
-# Step 4 — Build portable zip
+# Step 4 - Build portable zip
 # ------------------------------------------------------------------
 Write-Host "`n[4/8] Building portable zip..."
 & powershell -ExecutionPolicy Bypass -File (Join-Path (Join-Path $root "scripts") "build_portable.ps1") -Version $Version
@@ -58,7 +58,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ------------------------------------------------------------------
-# Step 5 — Generate SHA-256 checksums
+# Step 5 - Generate SHA-256 checksums
 # ------------------------------------------------------------------
 Write-Host "`n[5/8] Generating SHA-256 checksums..."
 $checksumFile = Join-Path $releaseDir "SHA256SUMS.txt"
@@ -72,7 +72,7 @@ Get-ChildItem -File $releaseDir | ForEach-Object {
 Write-Host "Checksums written to SHA256SUMS.txt"
 
 # ------------------------------------------------------------------
-# Step 6 — Verify release artifacts
+# Step 6 - Verify release artifacts
 # ------------------------------------------------------------------
 Write-Host "`n[6/8] Verifying release artifacts..."
 & python (Join-Path (Join-Path $root "scripts") "verify_release_artifacts.py") $releaseDir
@@ -81,7 +81,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ------------------------------------------------------------------
-# Step 7 — Verify model integrity
+# Step 7 - Verify model integrity
 # ------------------------------------------------------------------
 Write-Host "`n[7/8] Running model integrity checks..."
 python -m pytest (Join-Path (Join-Path $root "tests") "test_model_integrity.py") -q
@@ -104,11 +104,11 @@ if (Test-Path $checksumsPath) {
 }
 
 # ------------------------------------------------------------------
-# Step 8 — Transcription quality eval (optional)
+# Step 8 - Transcription quality eval (optional)
 # ------------------------------------------------------------------
 $evalDir = Join-Path $root "data" "eval"
-$hasEvalWavs = (Get-ChildItem $evalDir -Filter "*.wav" 2>$null).Count -gt 0
-$hasModels = (Get-ChildItem (Join-Path $root "models") -Filter "*.bin" 2>$null).Count -gt 0
+$hasEvalWavs = (Get-ChildItem $evalDir -Filter "*.wav" -ErrorAction SilentlyContinue).Count -gt 0
+$hasModels = (Get-ChildItem (Join-Path $root "models") -Filter "*.bin" -ErrorAction SilentlyContinue).Count -gt 0
 
 if ($hasEvalWavs -and $hasModels) {
     Write-Host "`n[8/8] Running transcription quality eval..."
@@ -121,10 +121,10 @@ if ($hasEvalWavs -and $hasModels) {
         throw "Transcription eval failed (exit $LASTEXITCODE)"
     }
     if ($LASTEXITCODE -eq 2) {
-        Write-Host "  (eval skipped — no processable clips)"
+        Write-Host "  (eval skipped - no processable clips)"
     }
 } else {
-    Write-Host "`n[8/8] Skipped — eval requires model files + WAV clips in data/eval/"
+    Write-Host "`n[8/8] Skipped - eval requires model files + WAV clips in data/eval/"
 }
 
 Write-Host "`n=== Release preparation complete ==="
