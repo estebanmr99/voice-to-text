@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Quick task 260505-w0l release publication complete
-last_updated: "2026-05-05T23:18:00-06:00"
+stopped_at: Quick task 260511-q9k EVAL-REVIEW gaps closed
+last_updated: "2026-05-12T00:54:41-06:00"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -72,8 +72,15 @@ Plan: 4 of 4
 3. **Manual device/backend validation still required** — Automated tests pass, but Logitech Brio behavior across MME/WASAPI and real global hotkey capture still needs direct UAT confirmation
 4. **GitHub Actions publish step initially returned 403 for `v0.1.0`** — Public release was created successfully with `gh release create`; workflow now declares `permissions: contents: write` for future tags
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260511-q9k | Close EVAL-REVIEW gaps: create reference audio dataset, WER benchmark, model integrity checks, dictation smoke test, and integrate into release pipeline | 2026-05-12 | d003e3e | Verified | [260511-q9k-close-eval-review-gaps-create-reference-](./quick/260511-q9k-close-eval-review-gaps-create-reference-/) |
+
 ## Session Continuity
 
+Last activity: 2026-05-12 - Completed quick task 260511-q9k: Close EVAL-REVIEW gaps
 Last session: 2026-05-05T23:18:00-06:00
 Stopped at: Quick task 260505-w0l complete
 Resume file: .planning/quick/260505-w0l-i-generated-everything-manually-and-was-/260505-w0l-SUMMARY.md
