@@ -96,7 +96,7 @@ All OMO agents now use cheap models (DeepSeek V4 Pro, GLM-5.1, Kimi K2.6, MiniMa
 **Quick toggle:**
 ```bash
 # Enable (for execution phase)
-cp ~/.config/opencode/"opencode - copia.json" ~/.config/opencode/opencode.json
+cp ~/.config/opencode/"opencode2.json" ~/.config/opencode/opencode.json
 
 # Disable (for planning phase)
 # Edit opencode.json: change "plugin": ["oh-my-openagent@latest"] to "plugin": []

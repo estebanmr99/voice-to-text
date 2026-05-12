@@ -83,14 +83,15 @@ class TestDictationSmoke:
         audio = _load_wav(wav_path)
         assert len(audio) > 0, "Loaded audio is empty"
 
-        manager = ModelManager(models_dir=str(MODELS_DIR))
+        manager = ModelManager(models_dir=MODELS_DIR)
         transcriber = Transcriber(manager)
 
         try:
             model_info = ModelInfo(
-                path=str(model_path),
+                path=model_path,
                 name=model_path.name,
-                n_threads=4,
+                size_mb=0,
+                parameters={"n_threads": 4},
             )
 
             started = transcriber.start(model_info)

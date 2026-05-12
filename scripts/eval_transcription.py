@@ -48,6 +48,20 @@ def _load_transcriber():
     return ModelManager, Transcriber, ModelInfo
 
 
+def _load_post_processor():
+    """Lazy-import and return a PostProcessor with default glossary loaded."""
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+    from glossary import GlossaryStore
+    from post_processor import PostProcessor
+
+    default_glossary = (
+        Path(__file__).resolve().parent.parent / "data" / "default_glossary.json"
+    )
+    return PostProcessor(GlossaryStore(default_path=default_glossary))
+
+
 # ---------------------------------------------------------------------------
 # Audio loading
 # ---------------------------------------------------------------------------
@@ -150,6 +164,7 @@ def compute_wer_for_model(
     model_path: str | Path,
     data_dir: str | Path = "data/eval",
     n_threads: int = 4,
+    post_process: bool = False,
 ) -> BenchmarkResult:
     """Run WER benchmark against eval dataset.
 
@@ -172,12 +187,15 @@ def compute_wer_for_model(
         return result
 
     transcripts: dict[str, str] = {}
+    languages: dict[str, str] = {}
     with transcripts_path.open(encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
                 entry = json.loads(line)
-                transcripts[str(entry["id"])] = str(entry["text"])
+                clip_id = str(entry["id"])
+                transcripts[clip_id] = str(entry["text"])
+                languages[clip_id] = str(entry.get("language", "auto"))
 
     # Check model exists
     if not model_path.is_file():
@@ -186,13 +204,14 @@ def compute_wer_for_model(
 
     # Start transcriber
     ModelManager, Transcriber, ModelInfo = _load_transcriber()
-    manager = ModelManager(models_dir=str(model_path.parent))
+    manager = ModelManager(models_dir=model_path.parent)
     transcriber = Transcriber(manager)
 
     model_info = ModelInfo(
-        path=str(model_path),
+        path=model_path,
         name=model_path.name,
-        n_threads=n_threads,
+        size_mb=0,
+        parameters={"n_threads": n_threads},
     )
 
     try:
@@ -200,6 +219,9 @@ def compute_wer_for_model(
             err = transcriber.get_last_error() or "Unknown error starting transcriber"
             result.errors.append(f"Failed to start transcriber: {err}")
             return result
+
+        # Optional post-processor for glossary normalization
+        pp = _load_post_processor() if post_process else None
 
         # Process each clip
         for clip_id in sorted(transcripts.keys()):
@@ -209,9 +231,12 @@ def compute_wer_for_model(
 
             try:
                 audio, sr = _load_wav(wav_path)
-                hypothesis = transcriber.transcribe(audio)
+                lang = languages.get(clip_id, "auto")
+                hypothesis = transcriber.transcribe(audio, language=lang)
                 if hypothesis is None:
                     hypothesis = ""
+                if pp is not None:
+                    hypothesis = pp.normalize(hypothesis)
                 gt = transcripts[clip_id]
                 w = jiwer_wer(gt, hypothesis)
                 result.clips.append(
@@ -288,12 +313,19 @@ def main(argv: list[str] | None = None) -> int:
         default=4,
         help="Number of CPU threads (default: 4)",
     )
+    parser.add_argument(
+        "--post-process",
+        action="store_true",
+        default=False,
+        help="Apply glossary normalization before computing WER",
+    )
     args = parser.parse_args(argv)
 
     result = compute_wer_for_model(
         model_path=args.model_path,
         data_dir=args.data_dir,
         n_threads=args.n_threads,
+        post_process=args.post_process,
     )
 
     _print_results(result)

@@ -120,9 +120,11 @@ def run_worker(
             elif audio_array.dtype != np.float32:
                 audio_array = audio_array.astype(np.float32)
 
-            # Pass language to whisper for better multilingual detection
-            transcribe_kwargs = {}
-            if language and language != "auto":
+            # Pass language to whisper for better multilingual detection.
+            # "auto" is a valid pywhispercpp value — whisper.cpp uses it for
+            # auto-detection (same as "" or None per PARAMS_SCHEMA).
+            transcribe_kwargs: dict[str, str] = {}
+            if language:
                 transcribe_kwargs["language"] = language
 
             segments = model.transcribe(audio_array, **transcribe_kwargs)

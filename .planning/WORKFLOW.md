@@ -80,7 +80,7 @@ OMO is controlled by the `plugin` array in `~/.config/opencode/opencode.json`:
 **To toggle:**
 ```bash
 # Enable OMO (for execution phase)
-cp ~/.config/opencode/"opencode - copia.json" ~/.config/opencode/opencode.json
+cp ~/.config/opencode/"opencode2.json" ~/.config/opencode/opencode.json
 
 # Disable OMO (for planning phase)
 # Edit opencode.json: change "plugin": ["oh-my-openagent@latest"] to "plugin": []
@@ -502,7 +502,7 @@ cat .planning/ROADMAP.md
 ### Toggle OMO
 ```bash
 # Enable
-cp ~/.config/opencode/"opencode - copia.json" ~/.config/opencode/opencode.json
+cp ~/.config/opencode/"opencode2.json" ~/.config/opencode/opencode.json
 
 # Disable
 # Edit opencode.json: "plugin": []

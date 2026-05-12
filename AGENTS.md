@@ -173,6 +173,6 @@ Model registry at `models/registry.json`. Three default profiles: `cpu-portable`
 - **Ultrawork mode:** Sisyphus handles longer, complex tasks with better context management
 
 ### OMO Toggle
-- **Enable:** `cp ~/.config/opencode/"opencode - copia.json" ~/.config/opencode/opencode.json`
+- **Enable:** `cp ~/.config/opencode/"opencode2.json" ~/.config/opencode/opencode.json`
 - **Disable:** Edit `~/.config/opencode/opencode.json` → `"plugin": []`
 - **Restart OpenCode** after changing
