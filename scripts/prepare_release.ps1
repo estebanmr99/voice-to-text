@@ -106,7 +106,7 @@ if (Test-Path $checksumsPath) {
 # ------------------------------------------------------------------
 # Step 8 - Transcription quality eval (optional)
 # ------------------------------------------------------------------
-$evalDir = Join-Path $root "data" "eval"
+$evalDir = Join-Path (Join-Path $root "data") "eval"
 $hasEvalWavs = (Get-ChildItem $evalDir -Filter "*.wav" -ErrorAction SilentlyContinue).Count -gt 0
 $hasModels = (Get-ChildItem (Join-Path $root "models") -Filter "*.bin" -ErrorAction SilentlyContinue).Count -gt 0
 
