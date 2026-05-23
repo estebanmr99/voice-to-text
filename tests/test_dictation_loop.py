@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from dictation_loop import DictationLoop, DictationState
+from transcriber import TranscriberInterface
 
 
 def _wait_for_transcription(loop: DictationLoop, qapp, timeout: float = 5.0) -> None:
@@ -434,3 +435,51 @@ class TestPostProcessorIntegration:
         _wait_for_transcription(loop, qapp)
 
         mock_deps["paste_controller"].paste.assert_called_once_with("raw text")
+
+
+class TestTranscriberRouting:
+    """Tests for DictationLoop transcriber routing via set_active_transcriber()."""
+
+    def test_set_active_transcriber_switches_transcriber(self, loop, mock_deps, qapp):
+        """set_active_transcriber() replaces the internal transcriber and is used."""
+        from speech_detector import VADEvent
+
+        new_transcriber = MagicMock()
+        new_transcriber.transcribe.return_value = "switched transcriber"
+        mock_deps["paste_controller"].paste.return_value = True
+
+        loop.set_active_transcriber(new_transcriber)
+        assert loop._transcriber is new_transcriber
+
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+
+        loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
+
+        new_transcriber.transcribe.assert_called_once()
+        mock_deps["paste_controller"].paste.assert_called_once_with("switched transcriber")
+
+    def test_transcriber_interface_contract(self, loop, mock_deps, qapp):
+        """Any TranscriberInterface implementation works as the transcriber."""
+        from speech_detector import VADEvent
+
+        interface_transcriber = MagicMock(spec=TranscriberInterface)
+        interface_transcriber.transcribe.return_value = "interface transcription"
+        mock_deps["paste_controller"].paste.return_value = True
+
+        loop.set_active_transcriber(interface_transcriber)
+        assert loop._transcriber is interface_transcriber
+
+        loop.start()
+        frame = np.zeros(480, dtype=np.int16)
+        mock_deps["speech_detector"].process_frame.return_value = VADEvent.SPEECH_END
+
+        loop._on_audio_block(frame)
+        _wait_for_transcription(loop, qapp)
+
+        interface_transcriber.transcribe.assert_called_once()
+        mock_deps["paste_controller"].paste.assert_called_once_with(
+            "interface transcription"
+        )

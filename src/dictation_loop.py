@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from diagnostics import Diagnostics
     from audio_capture import AudioCapture
     from speech_detector import SpeechDetector, VADEvent
-    from transcriber import Transcriber
+    from transcriber import TranscriberInterface
     from paste_controller import PasteController
     from post_processor import PostProcessor
 
@@ -72,7 +72,7 @@ class DictationLoop(QObject):
         settings: "SettingsStore",
         audio_capture: "AudioCapture",
         speech_detector: "SpeechDetector",
-        transcriber: "Transcriber",
+        transcriber: "TranscriberInterface",
         paste_controller: "PasteController",
         diagnostics: "Diagnostics | None" = None,
         post_processor: "PostProcessor | None" = None,
@@ -97,6 +97,20 @@ class DictationLoop(QObject):
         self._speech_end_signal.connect(self._handle_speech_end)
         self._transcription_result_signal.connect(self._handle_transcription_result)
         self._transcription_error_signal.connect(self._handle_transcription_error)
+
+    # ------------------------------------------------------------------
+    # Transcriber routing
+    # ------------------------------------------------------------------
+
+    def set_active_transcriber(self, transcriber: "TranscriberInterface") -> None:
+        """Switch the active transcriber at runtime.
+
+        Parameters
+        ----------
+        transcriber:
+            Any ``TranscriberInterface`` implementation (local or cloud).
+        """
+        self._transcriber = transcriber
 
     # ------------------------------------------------------------------
     # State machine
@@ -258,7 +272,7 @@ class DictationLoop(QObject):
 
         def _transcribe_worker() -> None:
             try:
-                text = self._transcriber.transcribe(audio, language=language)
+                text = self._transcriber.transcribe(audio, sample_rate=16000, language=language)
                 if self._post_processor is not None:
                     text = self._post_processor.normalize(text)
                 if not text:
