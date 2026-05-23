@@ -194,9 +194,13 @@ class ShellIntegration(QObject):
         hotkey_map: dict[str, callable] = {}
         # Register only toggle with GlobalHotKeys. Push-to-talk needs key
         # release events, so it is handled by _setup_ptt_listener below.
-        desired_hotkeys = [
-            ("toggle", self._settings.hotkey_toggle),
-        ]
+        # If both settings use the same combo, PTT wins to avoid the combo
+        # also firing toggle on key press.
+        toggle_hotkey = self._settings.hotkey_toggle.strip()
+        ptt_hotkey = self._settings.hotkey_push_to_talk.strip()
+        desired_hotkeys = []
+        if toggle_hotkey.upper() != ptt_hotkey.upper():
+            desired_hotkeys.append(("toggle", toggle_hotkey))
         seen: set[str] = set()
 
         for role, raw_hotkey in desired_hotkeys:
@@ -223,13 +227,16 @@ class ShellIntegration(QObject):
             logger.info("Registered global hotkey %s for %s (pynput: %s)", raw_hotkey.strip(), role, pynput_str)
 
         # Set up PTT press/release listener for the push_to_talk hotkey
-        ptt_raw = self._settings.hotkey_push_to_talk.strip().upper()
+        ptt_raw = ptt_hotkey.upper()
         if ptt_raw:
             ptt_format = _hotkey_to_pynput_format(self._settings.hotkey_push_to_talk)
             if ptt_format:
                 self._setup_ptt_listener(ptt_format)
 
         if not hotkey_map:
+            if self._ptt_listener is not None:
+                self._registered = True
+                return True
             self._log_event("hotkey_registration_failed")
             return False
 
@@ -278,42 +285,44 @@ class ShellIntegration(QObject):
         self._ptt_listener: object | None = None
         self._ptt_active = False
 
-        # Parse the pynput format string into individual keys
-        # Format: "<ctrl>+<shift>+d" or "<ctrl>+<f1>"
+        # Parse the pynput format string into normalized tokens.
+        # Format: "<ctrl>+<shift>+d" or "<ctrl>+<f1>".
+        # Listener receives concrete left/right modifiers (ctrl_l/ctrl_r),
+        # so comparing raw pynput Key objects is unreliable. Normalize both
+        # configured and observed keys to string tokens instead.
         parts = pynput_format.replace(" ", "").split("+")
-        ptt_keys: set = set()
-        _KEY_MAP: dict[str, object] = {
-            "<ctrl>": pynput_keyboard.Key.ctrl,
-            "<alt>": pynput_keyboard.Key.alt,
-            "<shift>": pynput_keyboard.Key.shift,
-            "<cmd>": pynput_keyboard.Key.cmd,
-            "<space>": pynput_keyboard.Key.space,
-            "<enter>": pynput_keyboard.Key.enter,
-            "<tab>": pynput_keyboard.Key.tab,
-            "<esc>": pynput_keyboard.Key.esc,
-            "<insert>": pynput_keyboard.Key.insert,
-            "<delete>": pynput_keyboard.Key.delete,
-            "<home>": pynput_keyboard.Key.home,
-            "<end>": pynput_keyboard.Key.end,
-            "<page_up>": pynput_keyboard.Key.page_up,
-            "<page_down>": pynput_keyboard.Key.page_down,
-            "<up>": pynput_keyboard.Key.up,
-            "<down>": pynput_keyboard.Key.down,
-            "<left>": pynput_keyboard.Key.left,
-            "<right>": pynput_keyboard.Key.right,
+        ptt_keys: set[str] = set()
+        _TOKEN_MAP: dict[str, str] = {
+            "<ctrl>": "ctrl",
+            "<alt>": "alt",
+            "<shift>": "shift",
+            "<cmd>": "cmd",
+            "<space>": "space",
+            "<enter>": "enter",
+            "<tab>": "tab",
+            "<esc>": "esc",
+            "<insert>": "insert",
+            "<delete>": "delete",
+            "<home>": "home",
+            "<end>": "end",
+            "<page_up>": "page_up",
+            "<page_down>": "page_down",
+            "<up>": "up",
+            "<down>": "down",
+            "<left>": "left",
+            "<right>": "right",
         }
-        # Add F1-F12
         for i in range(1, 13):
-            _KEY_MAP[f"<f{i}>"] = getattr(pynput_keyboard.Key, f"f{i}", None)
+            _TOKEN_MAP[f"<f{i}>"] = f"f{i}"
 
         for part in parts:
-            if part in _KEY_MAP:
-                ptt_keys.add(_KEY_MAP[part])
+            if part in _TOKEN_MAP:
+                ptt_keys.add(_TOKEN_MAP[part])
             elif len(part) == 3 and part.startswith("<") and part.endswith(">"):
                 # Single char like <d> → treat as regular key
-                ptt_keys.add(pynput_keyboard.KeyCode.from_char(part[1]))
+                ptt_keys.add(part[1].lower())
             elif len(part) == 1:
-                ptt_keys.add(pynput_keyboard.KeyCode.from_char(part))
+                ptt_keys.add(part.lower())
             else:
                 logger.warning("PTT listener: unknown key token '%s'", part)
 
@@ -321,18 +330,39 @@ class ShellIntegration(QObject):
             logger.warning("PTT listener: no valid keys parsed from '%s'", pynput_format)
             return
 
-        held: set = set()
+        held: set[str] = set()
+
+        def _normalize_key(key) -> str | None:
+            # Character key (KeyCode)
+            char = getattr(key, "char", None)
+            if char:
+                return str(char).lower()
+
+            # Special key/modifier. Pynput string forms look like
+            # "Key.ctrl_l", "Key.alt_r", "Key.space".
+            name = str(key).replace("Key.", "").lower()
+            if name in ("ctrl", "ctrl_l", "ctrl_r"):
+                return "ctrl"
+            if name in ("alt", "alt_l", "alt_r", "alt_gr"):
+                return "alt"
+            if name in ("shift", "shift_l", "shift_r"):
+                return "shift"
+            if name in ("cmd", "cmd_l", "cmd_r"):
+                return "cmd"
+            return name
 
         def _on_press(key):
-            if key in ptt_keys:
-                held.add(key)
+            token = _normalize_key(key)
+            if token in ptt_keys:
+                held.add(token)
                 if not self._ptt_active and ptt_keys.issubset(held):
                     self._ptt_active = True
                     self.ptt_pressed.emit()
 
         def _on_release(key):
-            if key in ptt_keys:
-                held.discard(key)
+            token = _normalize_key(key)
+            if token in ptt_keys:
+                held.discard(token)
                 if self._ptt_active and not ptt_keys.issubset(held):
                     self._ptt_active = False
                     self.ptt_released.emit()

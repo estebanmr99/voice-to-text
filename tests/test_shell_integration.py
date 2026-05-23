@@ -71,6 +71,8 @@ class TestShellIntegration:
         )
 
     def test_hotkey_registration(self, shell, mock_user32):
+        shell._settings.hotkey_toggle = "Ctrl+Shift+D"
+        shell._settings.hotkey_push_to_talk = "Ctrl+Alt+D"
         result = shell.register_hotkeys()
         assert result is True
         assert shell._registered is True
@@ -83,6 +85,8 @@ class TestShellIntegration:
         assert shell._registered is False
 
     def test_hotkey_registration_failure(self, shell, mock_user32):
+        shell._settings.hotkey_toggle = "Ctrl+Shift+D"
+        shell._settings.hotkey_push_to_talk = "Ctrl+Alt+D"
         mock_user32.GlobalHotKeys.side_effect = Exception("test error")
         result = shell.register_hotkeys()
         assert result is False
@@ -104,9 +108,10 @@ class TestShellIntegration:
 
         shell.register_hotkeys()
 
-        call_args = mock_user32.GlobalHotKeys.call_args[0][0]
-        # Only toggle is registered in GlobalHotKeys; PTT uses Listener.
-        assert len(call_args) == 1
+        # Same combo cannot mean both toggle and PTT. PTT wins and uses
+        # Listener; GlobalHotKeys is not registered for the duplicate toggle.
+        assert not mock_user32.GlobalHotKeys.called
+        assert mock_user32.Listener.called
 
     def test_tray_menu_has_actions(self, shell, qapp):
         tray = shell.setup_tray()
