@@ -13,7 +13,7 @@ Spanglish Dictation can use for offline transcription.
 
 | Field | Value |
 |-------|-------|
-| Source | https://huggingface.co/ggerganov/whisper.cpp/tree/main |
+| Source | https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin |
 | Licence | MIT (OpenAI) |
 | Redistribution | verify before release |
 
@@ -27,7 +27,7 @@ Spanglish Dictation can use for offline transcription.
 | Size | 141.1 MB |
 | SHA-256 | `60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe` |
 | Profile | CPU Portable |
-| Source | https://huggingface.co/ggerganov/whisper.cpp/tree/main |
+| Source | https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin |
 
 ---
 
@@ -39,7 +39,7 @@ Spanglish Dictation can use for offline transcription.
 | Size | 465.0 MB |
 | SHA-256 | `1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b` |
 | Profile | CPU High Accuracy |
-| Source | https://huggingface.co/ggerganov/whisper.cpp/tree/main |
+| Source | https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin |
 
 ---
 

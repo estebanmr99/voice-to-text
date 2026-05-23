@@ -102,15 +102,17 @@ class TestShellIntegration:
         assert "<ctrl>+<alt>+f" not in call_args
         assert mock_user32.Listener.called
 
-    def test_duplicate_hotkeys_register_once(self, shell, mock_user32):
+    def test_duplicate_hotkeys_keep_ptt_and_add_fallback_toggle(self, shell, mock_user32):
         shell._settings.hotkey_toggle = "Ctrl+Alt+F"
         shell._settings.hotkey_push_to_talk = "Ctrl+Alt+F"
 
         shell.register_hotkeys()
 
-        # Same combo cannot mean both toggle and PTT. PTT wins and uses
-        # Listener; GlobalHotKeys is not registered for the duplicate toggle.
-        assert not mock_user32.GlobalHotKeys.called
+        # Same combo cannot mean both toggle and PTT. PTT keeps the configured
+        # combo; toggle gets a safe fallback so both modes remain reachable.
+        call_args = mock_user32.GlobalHotKeys.call_args[0][0]
+        assert "<ctrl>+<shift>+d" in call_args
+        assert "<ctrl>+<alt>+f" not in call_args
         assert mock_user32.Listener.called
 
     def test_tray_menu_has_actions(self, shell, qapp):
@@ -176,6 +178,59 @@ class TestShellIntegration:
         # Simulate pynput callback firing
         shell.hotkey_pressed.emit(1)
         assert received == [1]
+
+    def test_ptt_listener_emits_press_and_release(self, shell, mock_user32):
+        class FakeHotKey:
+            def __init__(self, keys, on_activate):
+                self.keys = set(keys)
+                self.on_activate = on_activate
+                self.held = set()
+                self.active = False
+
+            @staticmethod
+            def parse(_hotkey):
+                return {"ctrl", "alt", "d"}
+
+            def press(self, key):
+                self.held.add(key)
+                if not self.active and self.keys.issubset(self.held):
+                    self.active = True
+                    self.on_activate()
+
+            def release(self, key):
+                self.held.discard(key)
+                if not self.keys.issubset(self.held):
+                    self.active = False
+
+        class FakeListener:
+            def __init__(self, on_press, on_release):
+                self.on_press = on_press
+                self.on_release = on_release
+                self.daemon = False
+                self.started = False
+
+            def canonical(self, key):
+                return key
+
+            def start(self):
+                self.started = True
+
+        mock_user32.HotKey = FakeHotKey
+        mock_user32.Listener = FakeListener
+        seen = []
+        shell.ptt_pressed.connect(lambda: seen.append("pressed"))
+        shell.ptt_released.connect(lambda: seen.append("released"))
+
+        shell._setup_ptt_listener("<ctrl>+<alt>+d")
+
+        listener = shell._ptt_listener
+        assert listener is not None
+        listener.on_press("ctrl")
+        listener.on_press("alt")
+        listener.on_press("d")
+        listener.on_release("d")
+
+        assert seen == ["pressed", "released"]
 
     def test_update_tray_tooltip(self, shell, qapp):
         shell.setup_tray()

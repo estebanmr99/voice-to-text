@@ -201,6 +201,15 @@ class ShellIntegration(QObject):
         desired_hotkeys = []
         if toggle_hotkey.upper() != ptt_hotkey.upper():
             desired_hotkeys.append(("toggle", toggle_hotkey))
+        else:
+            fallback_toggle = "Ctrl+Shift+D"
+            if fallback_toggle.upper() != ptt_hotkey.upper():
+                desired_hotkeys.append(("toggle", fallback_toggle))
+                logger.warning(
+                    "Toggle hotkey duplicates PTT hotkey (%s); using fallback toggle %s",
+                    ptt_hotkey,
+                    fallback_toggle,
+                )
         seen: set[str] = set()
 
         for role, raw_hotkey in desired_hotkeys:
@@ -285,92 +294,44 @@ class ShellIntegration(QObject):
         self._ptt_listener: object | None = None
         self._ptt_active = False
 
-        # Parse the pynput format string into normalized tokens.
-        # Format: "<ctrl>+<shift>+d" or "<ctrl>+<f1>".
-        # Listener receives concrete left/right modifiers (ctrl_l/ctrl_r),
-        # so comparing raw pynput Key objects is unreliable. Normalize both
-        # configured and observed keys to string tokens instead.
-        parts = pynput_format.replace(" ", "").split("+")
-        ptt_keys: set[str] = set()
-        _TOKEN_MAP: dict[str, str] = {
-            "<ctrl>": "ctrl",
-            "<alt>": "alt",
-            "<shift>": "shift",
-            "<cmd>": "cmd",
-            "<space>": "space",
-            "<enter>": "enter",
-            "<tab>": "tab",
-            "<esc>": "esc",
-            "<insert>": "insert",
-            "<delete>": "delete",
-            "<home>": "home",
-            "<end>": "end",
-            "<page_up>": "page_up",
-            "<page_down>": "page_down",
-            "<up>": "up",
-            "<down>": "down",
-            "<left>": "left",
-            "<right>": "right",
-        }
-        for i in range(1, 13):
-            _TOKEN_MAP[f"<f{i}>"] = f"f{i}"
-
-        for part in parts:
-            if part in _TOKEN_MAP:
-                ptt_keys.add(_TOKEN_MAP[part])
-            elif len(part) == 3 and part.startswith("<") and part.endswith(">"):
-                # Single char like <d> → treat as regular key
-                ptt_keys.add(part[1].lower())
-            elif len(part) == 1:
-                ptt_keys.add(part.lower())
-            else:
-                logger.warning("PTT listener: unknown key token '%s'", part)
-
-        if not ptt_keys:
-            logger.warning("PTT listener: no valid keys parsed from '%s'", pynput_format)
+        try:
+            ptt_keys = set(pynput_keyboard.HotKey.parse(pynput_format))
+        except Exception as exc:
+            logger.warning("PTT listener: invalid hotkey '%s': %s", pynput_format, exc)
             return
 
-        held: set[str] = set()
+        listener_ref: dict[str, object] = {}
 
-        def _normalize_key(key) -> str | None:
-            # Character key (KeyCode)
-            char = getattr(key, "char", None)
-            if char:
-                return str(char).lower()
+        def _canonical(key):
+            listener = listener_ref.get("listener")
+            if listener is None:
+                return key
+            return listener.canonical(key)
 
-            # Special key/modifier. Pynput string forms look like
-            # "Key.ctrl_l", "Key.alt_r", "Key.space".
-            name = str(key).replace("Key.", "").lower()
-            if name in ("ctrl", "ctrl_l", "ctrl_r"):
-                return "ctrl"
-            if name in ("alt", "alt_l", "alt_r", "alt_gr"):
-                return "alt"
-            if name in ("shift", "shift_l", "shift_r"):
-                return "shift"
-            if name in ("cmd", "cmd_l", "cmd_r"):
-                return "cmd"
-            return name
+        def _on_activate():
+            if not self._ptt_active:
+                self._ptt_active = True
+                logger.debug("PTT pressed")
+                self.ptt_pressed.emit()
+
+        hotkey = pynput_keyboard.HotKey(ptt_keys, _on_activate)
 
         def _on_press(key):
-            token = _normalize_key(key)
-            if token in ptt_keys:
-                held.add(token)
-                if not self._ptt_active and ptt_keys.issubset(held):
-                    self._ptt_active = True
-                    self.ptt_pressed.emit()
+            hotkey.press(_canonical(key))
 
         def _on_release(key):
-            token = _normalize_key(key)
-            if token in ptt_keys:
-                held.discard(token)
-                if self._ptt_active and not ptt_keys.issubset(held):
-                    self._ptt_active = False
-                    self.ptt_released.emit()
+            canonical_key = _canonical(key)
+            if self._ptt_active and canonical_key in ptt_keys:
+                self._ptt_active = False
+                logger.debug("PTT released")
+                self.ptt_released.emit()
+            hotkey.release(canonical_key)
 
         try:
             self._ptt_listener = pynput_keyboard.Listener(
                 on_press=_on_press, on_release=_on_release
             )
+            listener_ref["listener"] = self._ptt_listener
             self._ptt_listener.daemon = True
             self._ptt_listener.start()
             logger.info("PTT press/release listener started for %s", pynput_format)
