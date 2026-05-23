@@ -6,6 +6,15 @@ attempts to neutralise PySide6.QtNetwork if it has already been imported.
 
 The guard is intended to be activated **once** at application startup,
 before any other module that might make network requests is imported.
+
+Whitelist support
+-----------------
+Call :meth:`whitelist_endpoints` after :meth:`enforce` to selectively allow
+connections to specific hosts while blocking all others.  Call
+:meth:`revoke_whitelist` to restore full blocking.
+
+When the whitelist is non-empty, only the listed hostnames are permitted.
+When the whitelist is empty (the default), **all** network calls are blocked.
 """
 
 from __future__ import annotations
@@ -13,8 +22,10 @@ from __future__ import annotations
 import logging
 import socket
 import ssl
+import threading
 import urllib.request
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from diagnostics import Diagnostics
@@ -47,6 +58,12 @@ class PrivacyGuard:
 
     def __init__(self, diagnostics: "Diagnostics | None" = None) -> None:
         self._diagnostics = diagnostics
+        # Guard against re-initialisation via singleton __init__ replay.
+        # _patch_* closures call PrivacyGuard() to fetch the singleton,
+        # which would otherwise reset the whitelist on every socket call.
+        if not hasattr(self, "_whitelist_lock"):
+            self._whitelist: set[str] = set()
+            self._whitelist_lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Public API
@@ -84,6 +101,91 @@ class PrivacyGuard:
         """Return ``True`` if blocking is active."""
         return self._enforced
 
+    def whitelist_endpoints(self, urls: list[str]) -> None:
+        """Allow connections to the given endpoints.
+
+        Parses hostnames from *urls* and adds them to the allow-list.
+        When the whitelist is non-empty, only the listed hostnames are
+        permitted through the guard.  Call :meth:`revoke_whitelist` to
+        restore full blocking.
+
+        Parameters
+        ----------
+        urls:
+            List of URL strings
+            (e.g. ``["https://api.openai.com/v1/chat/completions"]``).
+        """
+        hostnames: set[str] = set()
+        for url in urls:
+            hostname = self._parse_hostname(url)
+            if hostname:
+                hostnames.add(hostname)
+        if not hostnames:
+            return
+        with self._whitelist_lock:
+            self._whitelist.update(hostnames)
+        self._log_event("whitelist_updated", count=len(hostnames))
+
+    def revoke_whitelist(self) -> None:
+        """Clear the whitelist and restore full network blocking."""
+        with self._whitelist_lock:
+            self._whitelist.clear()
+        self._log_event("whitelist_revoked")
+
+    # ------------------------------------------------------------------
+    # Whitelist helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_hostname(url: str) -> str | None:
+        """Extract a hostname from *url*.
+
+        Handles URLs with and without a scheme (e.g.
+        ``"https://api.example.com/path"`` and ``"api.example.com/path"``).
+
+        Returns ``None`` if no hostname can be determined.
+        """
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            # Try with ``//`` prefix for schemeless URLs.
+            if not url.startswith(("http://", "https://", "//")):
+                parsed = urlparse(f"//{url}")
+                hostname = parsed.hostname
+        return hostname
+
+    def _whitelist_empty(self) -> bool:
+        """Return ``True`` when the whitelist has no entries (block all)."""
+        with self._whitelist_lock:
+            return not self._whitelist
+
+    def _is_allowed(self, hostname: str | None) -> bool:
+        """Check whether *hostname* is permitted through the guard.
+
+        Returns ``False`` when the whitelist is empty (block all).
+        Returns ``False`` when *hostname* is ``None`` (unknown target).
+        Thread-safe.
+        """
+        with self._whitelist_lock:
+            if not self._whitelist:
+                return False
+            if hostname is None:
+                return False
+            return hostname in self._whitelist
+
+    def _check_or_raise(self, hostname: str | None) -> None:
+        """Raise :class:`NetworkBlockedError` if *hostname* is not permitted.
+
+        Thread-safe — acquires the whitelist lock internally.
+        """
+        with self._whitelist_lock:
+            if not self._whitelist:
+                raise NetworkBlockedError("Network calls are blocked by privacy policy")
+            if hostname is None or hostname not in self._whitelist:
+                raise NetworkBlockedError(
+                    f"Network call to '{hostname}' is blocked by privacy policy"
+                )
+
     # ------------------------------------------------------------------
     # Patching helpers
     # ------------------------------------------------------------------
@@ -92,32 +194,62 @@ class PrivacyGuard:
     def _patch_socket() -> None:
         _original_socket = socket.socket
 
-        def _blocked_socket(*args: object, **kwargs: object) -> object:
-            raise NetworkBlockedError("Network calls are blocked by privacy policy")
+        # Subclass the original socket so we can intercept connect().
+        # Python C-level socket objects have a read-only ``connect``
+        # attribute, so instance-level monkey-patching is not possible.
+        class _WhitelistSocket(_original_socket):  # type: ignore[valid-type]
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                guard = PrivacyGuard()
+                # Fast path: empty whitelist means full block (existing behaviour).
+                if guard._whitelist_empty():
+                    raise NetworkBlockedError(
+                        "Network calls are blocked by privacy policy"
+                    )
+                super().__init__(*args, **kwargs)
+                self._pg_guard = guard
 
-        socket.socket = _blocked_socket  # type: ignore[assignment]
-        logger.debug("socket.socket patched")
+            def connect(self, address: object, **kwargs: object) -> None:  # type: ignore[override]
+                hostname: str | None = (
+                    address[0] if isinstance(address, tuple) else str(address)
+                )
+                self._pg_guard._check_or_raise(hostname)
+                return super().connect(address, **kwargs)
+
+        socket.socket = _WhitelistSocket  # type: ignore[assignment]
+        logger.debug("socket.socket patched (whitelist-aware)")
 
     @staticmethod
     def _patch_urllib() -> None:
         _original_urlopen = urllib.request.urlopen
 
-        def _blocked_urlopen(*args: object, **kwargs: object) -> object:
-            raise NetworkBlockedError("Network calls are blocked by privacy policy")
+        def _whitelist_aware_urlopen(url: object, *args: object, **kwargs: object) -> object:
+            guard = PrivacyGuard()
+            hostname: str | None
+            if isinstance(url, urllib.request.Request):
+                hostname = url.host  # type: ignore[union-attr]
+            else:
+                hostname = guard._parse_hostname(str(url))
+            guard._check_or_raise(hostname)
+            return _original_urlopen(url, *args, **kwargs)
 
-        urllib.request.urlopen = _blocked_urlopen  # type: ignore[assignment]
-        logger.debug("urllib.request.urlopen patched")
+        urllib.request.urlopen = _whitelist_aware_urlopen  # type: ignore[assignment]
+        logger.debug("urllib.request.urlopen patched (whitelist-aware)")
 
     @staticmethod
     def _patch_ssl() -> None:
-        if hasattr(ssl, "wrap_socket"):
-            _original_wrap_socket = ssl.wrap_socket
+        if not hasattr(ssl, "wrap_socket"):
+            return
 
-            def _blocked_wrap_socket(*args: object, **kwargs: object) -> object:
-                raise NetworkBlockedError("Network calls are blocked by privacy policy")
+        _original_wrap_socket = ssl.wrap_socket
 
-            ssl.wrap_socket = _blocked_wrap_socket  # type: ignore[assignment]
-            logger.debug("ssl.wrap_socket patched")
+        def _whitelist_aware_wrap_socket(sock: object, *args: object, **kwargs: object) -> object:
+            guard = PrivacyGuard()
+            server_hostname: str | None = kwargs.get("server_hostname") if kwargs else None
+            guard._check_or_raise(server_hostname)
+            return _original_wrap_socket(sock, *args, **kwargs)
+
+        ssl.wrap_socket = _whitelist_aware_wrap_socket  # type: ignore[assignment]
+        logger.debug("ssl.wrap_socket patched (whitelist-aware)")
 
     @staticmethod
     def _patch_qtnetwork() -> None:
@@ -127,20 +259,34 @@ class PrivacyGuard:
         except Exception:
             return
 
-        if hasattr(QtNetwork, "QNetworkAccessManager"):
-            _original_get = QtNetwork.QNetworkAccessManager.get
-            _original_post = QtNetwork.QNetworkAccessManager.post
-            _original_put = QtNetwork.QNetworkAccessManager.put
-            _original_delete = QtNetwork.QNetworkAccessManager.deleteResource
+        if not hasattr(QtNetwork, "QNetworkAccessManager"):
+            return
 
-            def _blocked_network_op(*args: object, **kwargs: object) -> object:
-                raise NetworkBlockedError("Network calls are blocked by privacy policy")
+        _original_get = QtNetwork.QNetworkAccessManager.get
+        _original_post = QtNetwork.QNetworkAccessManager.post
+        _original_put = QtNetwork.QNetworkAccessManager.put
+        _original_delete = QtNetwork.QNetworkAccessManager.deleteResource
 
-            QtNetwork.QNetworkAccessManager.get = _blocked_network_op  # type: ignore[assignment]
-            QtNetwork.QNetworkAccessManager.post = _blocked_network_op  # type: ignore[assignment]
-            QtNetwork.QNetworkAccessManager.put = _blocked_network_op  # type: ignore[assignment]
-            QtNetwork.QNetworkAccessManager.deleteResource = _blocked_network_op  # type: ignore[assignment]
-            logger.debug("QNetworkAccessManager patched")
+        def _make_qtnetwork_wrapper(  # type: ignore[misc]
+            original_method: object,
+        ) -> object:
+            def _wrapper(self_: object, request: object, *args: object, **kwargs: object) -> object:
+                guard = PrivacyGuard()
+                hostname: str | None = None
+                if hasattr(request, "url"):
+                    url_obj = request.url()  # type: ignore[union-attr]
+                    if hasattr(url_obj, "host"):
+                        hostname = url_obj.host()  # type: ignore[union-attr]
+                guard._check_or_raise(hostname)
+                return original_method(self_, request, *args, **kwargs)  # type: ignore[operator]
+
+            return _wrapper
+
+        QtNetwork.QNetworkAccessManager.get = _make_qtnetwork_wrapper(_original_get)  # type: ignore[assignment]
+        QtNetwork.QNetworkAccessManager.post = _make_qtnetwork_wrapper(_original_post)  # type: ignore[assignment]
+        QtNetwork.QNetworkAccessManager.put = _make_qtnetwork_wrapper(_original_put)  # type: ignore[assignment]
+        QtNetwork.QNetworkAccessManager.deleteResource = _make_qtnetwork_wrapper(_original_delete)  # type: ignore[assignment]
+        logger.debug("QNetworkAccessManager patched (whitelist-aware)")
 
     # ------------------------------------------------------------------
     # Logging helper
