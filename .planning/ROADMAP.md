@@ -4,12 +4,12 @@
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
-| 1 | Planning & Architecture | Lock architecture, privacy, licensing, benchmark design | PRIV-01, PRIV-02, MOD-01, MOD-02, TEST-01, TEST-02 | In Progress |
+| 1 | Planning & Architecture | Lock architecture, privacy, licensing, benchmark design | PRIV-01, PRIV-02, MOD-01, MOD-02, TEST-01, TEST-02 | Complete |
 | 2 | MVP Offline Dictation | 5/5 | Complete | |
 | 3 | Model Profiles | 3/3 | Complete   | 2026-05-05 |
 | 4 | GUI & Tray Polish | 3/3 | Complete   | 2026-05-05 |
-| 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | In Progress |
-| 6 | Packaging & Release | Windows installer, SBOM, license notices, GitHub release | REL-01–02 | Blocked |
+| 5 | Spanglish Glossary | Deterministic technical term normalization | CORE-05 | Complete |
+| 6 | Packaging & Release | Windows installer, SBOM, license notices, GitHub release | REL-01–02 | Complete |
 
 ---
 
@@ -190,15 +190,22 @@
 **Wave 3** *(depends on Wave 2)*
 - [x] 06-04: GitHub release workflow, checksums, and artifact verifier
 
-### Phase 7: 5
+## Phase 7: Azure API & ITS Data
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Support paid cloud-hosted models (Azure OpenAI) with secure ITS data handling, user-friendly model setup UI.
+
+**Requirements:** TBD
+
 **Depends on:** Phase 6
+
 **Plans:** 0 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 7 to break down)
+
+## Phase 8: Backlog - More Ideas
+
+**Goal:** [To be planned]
 
 ---
 

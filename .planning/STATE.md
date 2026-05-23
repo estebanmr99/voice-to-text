@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Quick task 260511-q9k EVAL-REVIEW gaps closed
-last_updated: "2026-05-12T00:54:41-06:00"
+status: complete
+stopped_at: v0.2.0 shipped - hotkey PTT fix, Azure/ITS backlog captured
+last_updated: "2026-05-23T00:00:00-06:00"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -77,12 +77,13 @@ Plan: 4 of 4
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 260511-q9k | Close EVAL-REVIEW gaps: create reference audio dataset, WER benchmark, model integrity checks, dictation smoke test, and integrate into release pipeline | 2026-05-12 | d003e3e | Verified | [260511-q9k-close-eval-review-gaps-create-reference-](./quick/260511-q9k-close-eval-review-gaps-create-reference-/) |
+| 260523-hj8 | Fix PTT hotkey using pynput HotKey + canonical press/release listener | 2026-05-23 | f8db4db | Verified | |
 
 ## Session Continuity
 
-Last activity: 2026-05-12 - Completed quick task 260511-q9k: Close EVAL-REVIEW gaps
-Last session: 2026-05-05T23:18:00-06:00
-Stopped at: Quick task 260505-w0l complete
+Last activity: 2026-05-23 - Shipped v0.2.0: PTT hotkey fix + release
+Last session: 2026-05-23T00:00:00-06:00
+Stopped at: v0.2.0 shipped, milestone v1.0 complete
 Resume file: .planning/quick/260505-w0l-i-generated-everything-manually-and-was-/260505-w0l-SUMMARY.md
 
 ## Task Status
@@ -100,15 +101,15 @@ Resume file: .planning/quick/260505-w0l-i-generated-everything-manually-and-was-
 
 ## Next Action
 
-1. Download `v0.1.0` from GitHub Releases and run a clean-machine smoke test with a side-loaded model
-2. Run `python src/main.py` and verify Brio dictation works on the intended backend in UAT
-3. Execute ASR/VAD benchmarks and remaining post-release verification work
+1. Verify GitHub Actions release workflow completed for v0.2.0
+2. Download v0.2.0 portable zip from GitHub Releases and test on clean machine
+3. Plan Phase 7: Azure API & ITS data support
 
 ## Session Handoff
 
 - Handoff file: `.planning/phases/02-mvp-offline-dictation/.continue-here.md`
 - Structured state: `.planning/HANDOFF.json`
-- Status: **PAUSED** — public `v0.1.0` shipped; resume with post-release verification/UAT
+- Status: **COMPLETE** — v0.2.0 shipped with working PTT; milestone v1.0 achieved
 
 ## Performance Metrics
 
