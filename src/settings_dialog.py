@@ -99,6 +99,47 @@ class SettingsDialog(QDialog):
         processing_layout.addRow("Model profile", self.model_profile_combo)
         processing_layout.addRow("VAD profile", self.vad_profile_combo)
 
+        # Cloud Provider
+        cloud_group = QGroupBox("Cloud Provider", self)
+        cloud_layout = QFormLayout(cloud_group)
+
+        self.cloud_profile_combo = QComboBox(self)
+        self.cloud_profile_combo.setEditable(True)
+        self.cloud_profile_combo.setInsertPolicy(QComboBox.NoInsert)
+        cloud_layout.addRow("Profile", self.cloud_profile_combo)
+
+        self.cloud_provider_combo = QComboBox(self)
+        self.cloud_provider_combo.addItem("Azure OpenAI", "azure")
+        self.cloud_provider_combo.addItem("AWS Transcribe", "aws")
+        cloud_layout.addRow("Provider", self.cloud_provider_combo)
+
+        self.cloud_endpoint_input = QLineEdit(self)
+        self.cloud_endpoint_input.setPlaceholderText("https://example.openai.azure.com")
+        cloud_layout.addRow("Endpoint URL", self.cloud_endpoint_input)
+
+        self.cloud_api_key_input = QLineEdit(self)
+        self.cloud_api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.cloud_api_key_input.setPlaceholderText("Enter API key")
+        cloud_layout.addRow("API Key", self.cloud_api_key_input)
+
+        self.cloud_model_input = QLineEdit(self)
+        self.cloud_model_input.setPlaceholderText("whisper-1")
+        cloud_layout.addRow("Model/Deployment", self.cloud_model_input)
+
+        self._cloud_region_label = QLabel("Region", self)
+        self.cloud_region_input = QLineEdit(self)
+        self.cloud_region_input.setPlaceholderText("e.g. us-east-1")
+        cloud_layout.addRow(self._cloud_region_label, self.cloud_region_input)
+
+        btn_layout = QHBoxLayout()
+        self.cloud_save_button = QPushButton("Save Profile", self)
+        self.cloud_delete_button = QPushButton("Delete Profile", self)
+        self.cloud_test_button = QPushButton("Test Connection", self)
+        btn_layout.addWidget(self.cloud_save_button)
+        btn_layout.addWidget(self.cloud_delete_button)
+        btn_layout.addWidget(self.cloud_test_button)
+        cloud_layout.addRow(btn_layout)
+
         # Paste & Language
         paste_lang_group = QGroupBox("Paste & Language", self)
         paste_lang_layout = QFormLayout(paste_lang_group)
@@ -138,9 +179,17 @@ class SettingsDialog(QDialog):
         form.addRow(hotkeys_group)
         form.addRow(audio_group)
         form.addRow(processing_group)
+        form.addRow(cloud_group)
         form.addRow(paste_lang_group)
         form.addRow(glossary_group)
         root.addWidget(form_host)
+
+        # Cloud provider signal connections
+        self.cloud_profile_combo.currentIndexChanged.connect(self._on_cloud_profile_selected)
+        self.cloud_provider_combo.currentIndexChanged.connect(self._on_provider_changed)
+        self.cloud_save_button.clicked.connect(self._on_cloud_save)
+        self.cloud_delete_button.clicked.connect(self._on_cloud_delete)
+        self.cloud_test_button.clicked.connect(self._on_cloud_test)
 
         self.button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel,
@@ -153,6 +202,7 @@ class SettingsDialog(QDialog):
 
         self._populate_model_profiles()
         self._populate_audio_devices()
+        self._populate_cloud_profiles_combo()
         self._load_from_settings()
 
     def _populate_model_profiles(self) -> None:
@@ -197,6 +247,18 @@ class SettingsDialog(QDialog):
         self._set_combo_value(self.language_combo, self._settings.language)
         glossary_value = self._settings.get("glossary_path", "")
         self.glossary_path_input.setText(str(glossary_value or ""))
+
+        # Cloud settings
+        provider = self._settings.cloud_provider
+        if provider:
+            idx = self.cloud_provider_combo.findData(provider)
+            if idx >= 0:
+                self.cloud_provider_combo.setCurrentIndex(idx)
+        self.cloud_endpoint_input.setText(self._settings.cloud_endpoint_url)
+        self.cloud_model_input.setText(self._settings.cloud_model_name or "whisper-1")
+        api_key = self._settings.get_api_key("cloud/main")
+        if api_key:
+            self.cloud_api_key_input.setText(api_key)
 
     @staticmethod
     def _set_combo_value(combo: QComboBox, value: object) -> None:
@@ -292,6 +354,133 @@ class SettingsDialog(QDialog):
         self._settings.paste_mode = str(self.paste_mode_combo.currentData())
         self._settings.language = str(self.language_combo.currentData())
         self._settings.set("glossary_path", self.glossary_path_input.text().strip())
+
+        # Cloud settings
+        self._settings.cloud_provider = str(self.cloud_provider_combo.currentData())
+        self._settings.cloud_endpoint_url = self.cloud_endpoint_input.text().strip()
+        self._settings.cloud_model_name = self.cloud_model_input.text().strip() or "whisper-1"
+        api_key = self.cloud_api_key_input.text()
+        if api_key:
+            self._settings.store_api_key("cloud/main", api_key)
+
         self._settings.end_batch()
         self.settings_applied.emit()
         self.accept()
+
+    def _populate_cloud_profiles_combo(self, select_name: str | None = None) -> None:
+        """Populate the saved cloud profiles combo from settings."""
+        self.cloud_profile_combo.blockSignals(True)
+        self.cloud_profile_combo.clear()
+        self.cloud_profile_combo.addItem("New Profile...", None)
+        for profile in self._settings.cloud_profiles:
+            name = profile.get("name", "")
+            self.cloud_profile_combo.addItem(name, name)
+        self.cloud_profile_combo.blockSignals(False)
+
+        if select_name:
+            idx = self.cloud_profile_combo.findData(select_name)
+            if idx >= 0:
+                self.cloud_profile_combo.setCurrentIndex(idx)
+
+    def _on_cloud_profile_selected(self, index: int) -> None:
+        """Populate fields when a saved cloud profile is selected."""
+        name = self.cloud_profile_combo.itemData(index)
+        if name is None:
+            # "New Profile..." — keep current fields
+            return
+
+        for profile in self._settings.cloud_profiles:
+            if profile.get("name") == name:
+                provider = profile.get("provider", "")
+                idx = self.cloud_provider_combo.findData(provider)
+                if idx >= 0:
+                    self.cloud_provider_combo.setCurrentIndex(idx)
+                self.cloud_endpoint_input.setText(profile.get("endpoint_url", ""))
+                self.cloud_model_input.setText(profile.get("model_name", ""))
+                self.cloud_region_input.setText(profile.get("region", ""))
+                api_key = self._settings.get_api_key(f"cloud/{name}")
+                if api_key:
+                    self.cloud_api_key_input.setText(api_key)
+                break
+
+    def _on_cloud_save(self) -> None:
+        """Save current cloud configuration as a named profile."""
+        name = self.cloud_profile_combo.currentText().strip()
+        if not name or name == "New Profile...":
+            QMessageBox.warning(self, "Save Error", "Please enter a profile name.")
+            return
+
+        profiles = list(self._settings.cloud_profiles)
+        provider = self.cloud_provider_combo.currentData()
+        endpoint = self.cloud_endpoint_input.text().strip()
+        model = self.cloud_model_input.text().strip() or "whisper-1"
+        region = self.cloud_region_input.text().strip()
+
+        profile_data: dict[str, str] = {
+            "name": name,
+            "provider": str(provider) if provider else "",
+            "endpoint_url": endpoint,
+            "model_name": model,
+            "region": region,
+        }
+
+        # Update existing or append new
+        found = False
+        for i, p in enumerate(profiles):
+            if p.get("name") == name:
+                profiles[i] = profile_data
+                found = True
+                break
+        if not found:
+            profiles.append(profile_data)
+
+        self._settings.cloud_profiles = profiles
+        self._populate_cloud_profiles_combo(name)
+
+        # Store API key
+        api_key = self.cloud_api_key_input.text()
+        if api_key:
+            self._settings.store_api_key(f"cloud/{name}", api_key)
+
+        QMessageBox.information(self, "Saved", f"Cloud profile '{name}' saved.")
+
+    def _on_cloud_delete(self) -> None:
+        """Delete the selected cloud profile."""
+        idx = self.cloud_profile_combo.currentIndex()
+        name = self.cloud_profile_combo.itemData(idx)
+        if name is None:
+            QMessageBox.warning(self, "Delete Error", "No saved profile selected.")
+            return
+
+        profiles = list(self._settings.cloud_profiles)
+        profiles = [p for p in profiles if p.get("name") != name]
+        self._settings.cloud_profiles = profiles
+        self._settings.delete_api_key(f"cloud/{name}")
+        self._populate_cloud_profiles_combo()
+
+        # Clear fields
+        self.cloud_endpoint_input.clear()
+        self.cloud_api_key_input.clear()
+        self.cloud_model_input.clear()
+        self.cloud_region_input.clear()
+
+        QMessageBox.information(self, "Deleted", f"Cloud profile '{name}' deleted.")
+
+    def _on_cloud_test(self) -> None:
+        """Test connection — no-op for now."""
+        QMessageBox.information(
+            self,
+            "Test Connection",
+            "Test not implemented yet.",
+        )
+
+    def _on_provider_changed(self, index: int) -> None:
+        """Show/hide region field based on provider selection."""
+        self._update_region_visibility()
+
+    def _update_region_visibility(self) -> None:
+        """Show region field only for AWS Transcribe."""
+        provider = self.cloud_provider_combo.currentData()
+        visible = provider == "aws"
+        self._cloud_region_label.setVisible(visible)
+        self.cloud_region_input.setVisible(visible)

@@ -18,6 +18,13 @@ class TestSettingsDialog:
         s.vad_profile = "webrtc"
         s.paste_mode = "immediate"
         s.language = "auto"
+        s.cloud_provider = ""
+        s.cloud_endpoint_url = ""
+        s.cloud_model_name = "whisper-1"
+        s.cloud_profiles = []
+        s.store_api_key.return_value = True
+        s.get_api_key.return_value = None
+        s.delete_api_key.return_value = True
         s.get.return_value = ""
         return s
 
@@ -25,8 +32,9 @@ class TestSettingsDialog:
     def model_manager(self):
         p1 = MagicMock(canonical_name="cpu-portable", display_name="CPU Portable")
         p2 = MagicMock(canonical_name="cpu-high-accuracy", display_name="CPU High Accuracy")
+        p3 = MagicMock(canonical_name="cloud-azure-default", display_name="Cloud - Azure Whisper", mode="cloud")
         mgr = MagicMock()
-        mgr.list_profiles.return_value = [p1, p2]
+        mgr.list_profiles.return_value = [p1, p2, p3]
         return mgr
 
     def test_dialog_constructs_and_populates(self, qapp, settings, model_manager):
@@ -159,3 +167,82 @@ class TestSettingsDialog:
             with patch.object(dialog, "_on_export_glossary") as mock_handler:
                 dialog.export_button.click()
                 mock_handler.assert_called_once()
+
+    def test_cloud_provider_group_exists(self, qapp, settings, model_manager):
+        """Test that all cloud provider UI elements are present."""
+        from settings_dialog import SettingsDialog
+
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
+
+        assert hasattr(dialog, "cloud_provider_combo")
+        assert hasattr(dialog, "cloud_endpoint_input")
+        assert hasattr(dialog, "cloud_api_key_input")
+        assert hasattr(dialog, "cloud_model_input")
+        assert hasattr(dialog, "cloud_region_input")
+        assert hasattr(dialog, "cloud_save_button")
+        assert hasattr(dialog, "cloud_delete_button")
+        assert hasattr(dialog, "cloud_test_button")
+        assert hasattr(dialog, "cloud_profile_combo")
+
+    def test_cloud_fields_accept_input(self, qapp, settings, model_manager):
+        """Test that cloud provider fields accept and return user input."""
+        from settings_dialog import SettingsDialog
+
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
+
+        dialog.cloud_endpoint_input.setText("https://test.azure.com")
+        dialog.cloud_api_key_input.setText("secret-key-123")
+        dialog.cloud_model_input.setText("whisper-2")
+        dialog.cloud_region_input.setText("eu-west-1")
+
+        assert dialog.cloud_endpoint_input.text() == "https://test.azure.com"
+        assert dialog.cloud_api_key_input.text() == "secret-key-123"
+        assert dialog.cloud_model_input.text() == "whisper-2"
+        assert dialog.cloud_region_input.text() == "eu-west-1"
+
+    def test_cloud_api_key_field_has_password_mode(self, qapp, settings, model_manager):
+        """Test that the API key field uses password echo mode."""
+        from PySide6.QtWidgets import QLineEdit
+        from settings_dialog import SettingsDialog
+
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
+
+        assert dialog.cloud_api_key_input.echoMode() == QLineEdit.EchoMode.Password
+
+    def test_model_profile_combo_includes_cloud_profiles(self, qapp, settings, model_manager):
+        """Test that the model profile combo shows cloud profiles."""
+        from settings_dialog import SettingsDialog
+
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
+
+        items = [dialog.model_profile_combo.itemText(i) for i in range(dialog.model_profile_combo.count())]
+        assert "Cloud - Azure Whisper" in items
+        assert "CPU Portable" in items
+        assert "CPU High Accuracy" in items
+
+    def test_save_cloud_settings(self, qapp, settings, model_manager):
+        """Test that cloud settings are saved on dialog save."""
+        from settings_dialog import SettingsDialog
+
+        with patch("settings_dialog.AudioCapture.list_devices", return_value=[]):
+            dialog = SettingsDialog(settings=settings, audio_capture=None, model_manager=model_manager)
+
+        # Set cloud fields
+        dialog.cloud_provider_combo.setCurrentIndex(1)  # AWS Transcribe
+        dialog.cloud_endpoint_input.setText("https://aws.example.com")
+        dialog.cloud_api_key_input.setText("test-api-key-123")
+        dialog.cloud_model_input.setText("my-model")
+        dialog.cloud_region_input.setText("us-west-2")
+
+        dialog.hotkey_push_to_talk_input.setText("Ctrl+Alt+F")
+        dialog.hotkey_toggle_input.setText("Win+Shift+G")
+        dialog._on_save()
+
+        assert settings.cloud_provider == "aws"
+        assert settings.cloud_endpoint_url == "https://aws.example.com"
+        assert settings.cloud_model_name == "my-model"
+        settings.store_api_key.assert_called_with("cloud/main", "test-api-key-123")
