@@ -1,6 +1,6 @@
 """Transcription orchestrator with worker process isolation.
 
-:class:`Transcriber` spawns a separate Python process that hosts the
+:class:`LocalTranscriber` spawns a separate Python process that hosts the
 whisper.cpp model.  This keeps the main UI thread responsive and
 isolates the large model memory footprint.
 
@@ -11,6 +11,7 @@ ensuring no retained audio on disk.
 
 from __future__ import annotations
 
+import abc
 import logging
 import multiprocessing
 import time
@@ -38,7 +39,75 @@ class TranscriptionError(Exception):
     pass
 
 
-class Transcriber:
+class TranscriberInterface(abc.ABC):
+    """Abstract interface for transcription backends.
+
+    All transcribers (local whisper.cpp, cloud Azure/AWS, etc.) implement
+    this contract so the dictation loop can switch between them without
+    knowing the underlying implementation.
+    """
+
+    @abc.abstractmethod
+    def start(self, config: Any) -> None:
+        """Start or configure the transcriber backend.
+
+        Parameters
+        ----------
+        config:
+            Backend-specific configuration (e.g. ``ModelInfo`` for local,
+            endpoint URL + API key reference for cloud).
+        """
+        ...
+
+    @abc.abstractmethod
+    def stop(self) -> None:
+        """Shut down the transcriber backend and free resources."""
+        ...
+
+    @abc.abstractmethod
+    def transcribe(
+        self, audio: np.ndarray, sample_rate: int, language: str | None = None
+    ) -> str:
+        """Transcribe *audio* and return the text.
+
+        Parameters
+        ----------
+        audio:
+            1-D numpy array of audio samples.
+        sample_rate:
+            Sample rate in Hz.
+        language:
+            Language code (e.g. ``"en"``, ``"es"``) or ``None`` for
+            auto-detection.
+
+        Returns
+        -------
+        str:
+            Transcribed text, or an empty string for silent / short audio.
+
+        Raises
+        ------
+        TranscriptionError:
+            If transcription fails.
+        """
+        ...
+
+    @abc.abstractmethod
+    def is_running(self) -> bool:
+        """Return ``True`` if the transcriber backend is active."""
+        ...
+
+    @abc.abstractmethod
+    def supports_language(self) -> bool:
+        """Return ``True`` if the backend accepts a language hint.
+
+        Local Whisper models support language hints.  Some cloud
+        providers may ignore or reject them.
+        """
+        ...
+
+
+class LocalTranscriber(TranscriberInterface):
     """Manages a whisper.cpp worker process for offline transcription.
 
     Usage::
@@ -166,6 +235,10 @@ class Transcriber:
         """Return the last error message, if any."""
         return self._last_error
 
+    def supports_language(self) -> bool:
+        """Local whisper.cpp models accept language hints."""
+        return True
+
     # ------------------------------------------------------------------
     # Transcription
     # ------------------------------------------------------------------
@@ -275,3 +348,9 @@ class Transcriber:
                 "Worker restart failed (attempt %d)", self._restart_attempts
             )
         return success
+
+
+# Backward-compatible alias — code that imported ``Transcriber`` continues
+# to work without changes.  New code should use ``LocalTranscriber`` or
+# ``TranscriberInterface`` explicitly.
+Transcriber = LocalTranscriber
