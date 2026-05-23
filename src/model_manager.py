@@ -88,8 +88,29 @@ class ModelInfo:
 
 
 @dataclass
+class CloudProviderConfig:
+    """Cloud provider connection configuration.
+
+    Stored alongside a Profile when ``mode == "cloud"``.  Never contains the
+    raw API key — only an opaque keyring identifier (``api_key_id``).
+    """
+
+    provider_type: str  # "azure", "aws", etc.
+    endpoint_url: str
+    api_key_id: str  # keyring identifier, never the key itself
+    model_name: str
+    region: str = ""
+
+
+@dataclass
 class Profile:
-    """Hardware profile metadata and model preference order."""
+    """Hardware profile metadata and model preference order.
+
+    ``mode`` distinguishes local (whisper.cpp / pywhispercpp) from cloud
+    (Azure OpenAI, AWS Transcribe, …).  Local profiles use
+    ``preferred_model`` + ``fallback_order`` for file-based resolution;
+    cloud profiles carry a ``provider_config`` instead.
+    """
 
     canonical_name: str
     display_name: str
@@ -98,6 +119,8 @@ class Profile:
     fallback_order: list[str]
     backend_hint: str
     shipping_default: bool = False
+    mode: str = "local"
+    provider_config: CloudProviderConfig | None = None
 
 
 class ModelManager:
@@ -236,6 +259,29 @@ class ModelManager:
         },
     ]
 
+    _DEFAULT_CLOUD_PROFILES: list[dict[str, Any]] = [
+        {
+            "canonical_name": "cloud-azure-default",
+            "display_name": "Cloud - Azure Whisper",
+            "description": (
+                "Azure OpenAI Whisper API — cloud transcription via HTTPS. "
+                "Requires a valid endpoint URL and API key."
+            ),
+            "preferred_model": "",
+            "fallback_order": [],
+            "backend_hint": "cloud",
+            "shipping_default": False,
+            "mode": "cloud",
+            "provider_config": {
+                "provider_type": "azure",
+                "endpoint_url": "",
+                "api_key_id": "cloud-azure-default",
+                "model_name": "whisper-1",
+                "region": "",
+            },
+        },
+    ]
+
     def __init__(self, models_dir: Path | None = None) -> None:
         self._models_dir = (
             models_dir or Path.home() / ".spanglish-dictation" / "models"
@@ -322,21 +368,57 @@ class ModelManager:
                 h.update(chunk)
         return h.hexdigest()
 
+    @staticmethod
+    def _profile_from_dict(entry: dict[str, Any]) -> Profile:
+        """Construct a :class:`Profile` from a plain dict (local or cloud).
+
+        Handles the ``mode`` and ``provider_config`` fields introduced for
+        cloud profile support.  Legacy entries without these fields default
+        to ``mode="local"`` and ``provider_config=None``.
+        """
+        mode = entry.get("mode", "local")
+        provider_config: CloudProviderConfig | None = None
+        if mode == "cloud":
+            pc = entry.get("provider_config", {}) or {}
+            provider_config = CloudProviderConfig(
+                provider_type=pc.get("provider_type", ""),
+                endpoint_url=pc.get("endpoint_url", ""),
+                api_key_id=pc.get("api_key_id", ""),
+                model_name=pc.get("model_name", ""),
+                region=pc.get("region", ""),
+            )
+        return Profile(
+            canonical_name=entry["canonical_name"],
+            display_name=entry["display_name"],
+            description=entry["description"],
+            preferred_model=entry.get("preferred_model", ""),
+            fallback_order=list(entry.get("fallback_order", [])),
+            backend_hint=entry["backend_hint"],
+            shipping_default=bool(entry.get("shipping_default", False)),
+            mode=mode,
+            provider_config=provider_config,
+        )
+
     def _load_profiles(self, profiles_payload: Any) -> None:
-        """Load profile registry from payload or seed defaults."""
+        """Load profile registry from payload or seed defaults.
+
+        Local profiles are loaded from the persisted registry or from
+        :attr:`_DEFAULT_PROFILES`.  Cloud profile templates are always seeded
+        from :attr:`_DEFAULT_CLOUD_PROFILES` (they have no model files to
+        validate and should never silently disappear).
+        """
         self._profiles.clear()
         source = profiles_payload or self._DEFAULT_PROFILES
         for entry in source:
-            profile = Profile(
-                canonical_name=entry["canonical_name"],
-                display_name=entry["display_name"],
-                description=entry["description"],
-                preferred_model=entry["preferred_model"],
-                fallback_order=list(entry.get("fallback_order", [])),
-                backend_hint=entry["backend_hint"],
-                shipping_default=bool(entry.get("shipping_default", False)),
-            )
+            profile = self._profile_from_dict(entry)
             self._profiles[profile.canonical_name] = profile
+
+        # Always seed default cloud profiles — they're templates, not
+        # model-bound, so they should never go missing.
+        for entry in self._DEFAULT_CLOUD_PROFILES:
+            if entry["canonical_name"] not in self._profiles:
+                profile = self._profile_from_dict(entry)
+                self._profiles[profile.canonical_name] = profile
 
     # ------------------------------------------------------------------
     # Public API

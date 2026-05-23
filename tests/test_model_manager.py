@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from model_manager import ModelInfo, ModelManager, Profile
+from model_manager import (
+    CloudProviderConfig,
+    ModelInfo,
+    ModelManager,
+    Profile,
+)
 
 
 class TestModelInfoSerialization:
@@ -104,6 +109,7 @@ class TestModelManagerRegistry:
             "cpu-high-accuracy",
             "cpu-max-accuracy",
             "nvidia-dev",
+            "cloud-azure-default",
         }
 
     def test_registry_saved_to_disk(self, tmp_path: Path) -> None:
@@ -177,7 +183,8 @@ class TestModelManagerRegistry:
             encoding="utf-8",
         )
         mgr = ModelManager(models_dir=tmp_path)
-        assert len(mgr.list_profiles()) == 5
+        # 5 local + 1 cloud default = 6 total
+        assert len(mgr.list_profiles()) == 6
 
 
 class TestModelManagerValidation:
@@ -345,3 +352,96 @@ class TestModelManagerMissingError:
         # The method is purely string formatting — no sockets, no HTTP.
         msg = mgr.get_missing_model_error("base")
         assert "http" not in msg.lower() or "huggingface" in msg
+
+
+class TestCloudProfiles:
+    """Cloud profile support: mode, provider_config, list/get."""
+
+    def test_list_profiles_includes_cloud(self, tmp_path: Path) -> None:
+        """list_profiles() returns the cloud profile alongside local ones."""
+        mgr = ModelManager(models_dir=tmp_path)
+        names = {p.canonical_name for p in mgr.list_profiles()}
+        assert "cloud-azure-default" in names
+
+    def test_cloud_profile_display_name_prefixed(self, tmp_path: Path) -> None:
+        """Cloud profile display_name starts with 'Cloud - '."""
+        mgr = ModelManager(models_dir=tmp_path)
+        profile = mgr.get_profile("cloud-azure-default")
+        assert profile.display_name.startswith("Cloud - ")
+
+    def test_cloud_profile_has_cloud_mode(self, tmp_path: Path) -> None:
+        """Cloud profile has mode='cloud'."""
+        mgr = ModelManager(models_dir=tmp_path)
+        profile = mgr.get_profile("cloud-azure-default")
+        assert profile.mode == "cloud"
+
+    def test_cloud_profile_has_provider_config(self, tmp_path: Path) -> None:
+        """Cloud profile carries a fully-populated CloudProviderConfig."""
+        mgr = ModelManager(models_dir=tmp_path)
+        profile = mgr.get_profile("cloud-azure-default")
+        assert profile.provider_config is not None
+        assert profile.provider_config.provider_type == "azure"
+        assert profile.provider_config.model_name == "whisper-1"
+        assert profile.provider_config.api_key_id == "cloud-azure-default"
+        assert profile.provider_config.endpoint_url == ""
+        assert profile.provider_config.region == ""
+
+    def test_cloud_profile_no_preferred_model(self, tmp_path: Path) -> None:
+        """Cloud profiles don't set preferred_model (uses provider_config)."""
+        mgr = ModelManager(models_dir=tmp_path)
+        profile = mgr.get_profile("cloud-azure-default")
+        assert profile.preferred_model == ""
+
+    def test_local_profiles_unaffected(self, tmp_path: Path) -> None:
+        """Existing local profiles keep mode='local' and provider_config=None."""
+        mgr = ModelManager(models_dir=tmp_path)
+        local = mgr.get_profile("cpu-portable")
+        assert local.mode == "local"
+        assert local.provider_config is None
+        assert local.preferred_model == "base"
+
+    def test_cloud_profile_registry_round_trip(self, tmp_path: Path) -> None:
+        """Cloud profile is persisted and re-loaded from registry."""
+        mgr1 = ModelManager(models_dir=tmp_path)
+        profile = mgr1.get_profile("cloud-azure-default")
+        assert profile.mode == "cloud"
+
+        # Create second manager to load from same registry
+        mgr2 = ModelManager(models_dir=tmp_path)
+        loaded = mgr2.get_profile("cloud-azure-default")
+        assert loaded.mode == "cloud"
+        assert loaded.provider_config is not None
+        assert loaded.provider_config.provider_type == "azure"
+
+    def test_cloud_profile_get_model_raises(self, tmp_path: Path) -> None:
+        """get_model() for a cloud profile name raises KeyError."""
+        mgr = ModelManager(models_dir=tmp_path)
+        with pytest.raises(KeyError):
+            mgr.get_model("cloud-azure-default")
+
+    def test_cloud_profile_from_dataclass(self) -> None:
+        """CloudProviderConfig can be created directly and attached to Profile."""
+        config = CloudProviderConfig(
+            provider_type="azure",
+            endpoint_url="https://example.openai.azure.com/",
+            api_key_id="my-key-id",
+            model_name="whisper-1",
+            region="eastus",
+        )
+        profile = Profile(
+            canonical_name="cloud-custom",
+            display_name="Cloud - Custom Azure",
+            description="My custom Azure endpoint",
+            preferred_model="",
+            fallback_order=[],
+            backend_hint="cloud",
+            mode="cloud",
+            provider_config=config,
+        )
+        assert profile.mode == "cloud"
+        assert profile.provider_config is not None
+        assert profile.provider_config.endpoint_url == (
+            "https://example.openai.azure.com/"
+        )
+        assert profile.provider_config.region == "eastus"
+        assert profile.provider_config.api_key_id == "my-key-id"
