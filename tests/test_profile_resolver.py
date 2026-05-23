@@ -109,3 +109,31 @@ def test_resolve_corrupt_model_fails_checksum(tmp_path: Path) -> None:
     assert result.model_info is not None
     assert result.model_info.name == "small"
     assert result.fallback_applied is True
+
+
+def test_resolve_cloud_profile_is_cloud(tmp_path: Path) -> None:
+    mgr = ModelManager(models_dir=tmp_path)
+    settings = _settings(tmp_path, "cloud-azure-default")
+    result = resolve_profile(settings, mgr, HardwareInfo())
+    assert result.is_cloud is True
+    assert result.provider_config is not None
+    assert result.provider_config.provider_type == "azure"
+
+
+def test_resolve_cloud_profile_no_hardware_check(tmp_path: Path) -> None:
+    """Cloud profiles must skip hardware detection entirely."""
+    mgr = ModelManager(models_dir=tmp_path)
+    settings = _settings(tmp_path, "cloud-azure-default")
+    result = resolve_profile(settings, mgr, HardwareInfo(has_nvidia_gpu=True))
+    assert result.is_cloud is True
+    assert result.advisory_message == ""
+
+
+def test_resolve_local_profile_not_cloud(tmp_path: Path) -> None:
+    """Local profiles must retain is_cloud=False and provider_config=None."""
+    mgr = ModelManager(models_dir=tmp_path)
+    _write_model_file(tmp_path / "ggml-base.bin")
+    settings = _settings(tmp_path, "cpu-portable")
+    result = resolve_profile(settings, mgr, HardwareInfo())
+    assert result.is_cloud is False
+    assert result.provider_config is None
