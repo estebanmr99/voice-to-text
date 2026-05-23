@@ -123,6 +123,8 @@ class ShellIntegration(QObject):
     """
 
     hotkey_pressed = Signal(int)
+    ptt_pressed = Signal()
+    ptt_released = Signal()
     status_changed = Signal(str)
     profile_changed = Signal(str)
     settings_updated = Signal()
@@ -173,6 +175,8 @@ class ShellIntegration(QObject):
 
         # pynput-based global hotkey listener
         self._hotkey_listener: object | None = None
+        self._ptt_listener: object | None = None
+        self._ptt_active: bool = False
 
     # ------------------------------------------------------------------
     # Hotkey (pynput-based)
@@ -217,6 +221,13 @@ class ShellIntegration(QObject):
             self._log_event("hotkey_registered", role=role, hotkey=raw_hotkey.strip())
             logger.info("Registered global hotkey %s for %s (pynput: %s)", raw_hotkey.strip(), role, pynput_str)
 
+        # Set up PTT press/release listener for the push_to_talk hotkey
+        ptt_raw = self._settings.hotkey_push_to_talk.strip().upper()
+        if ptt_raw:
+            ptt_format = _hotkey_to_pynput_format(self._settings.hotkey_push_to_talk)
+            if ptt_format:
+                self._setup_ptt_listener(ptt_format)
+
         if not hotkey_map:
             self._log_event("hotkey_registration_failed")
             return False
@@ -235,16 +246,106 @@ class ShellIntegration(QObject):
         return self._registered
 
     def unregister_hotkeys(self) -> None:
-        """Stop the pynput hotkey listener."""
+        """Stop the pynput hotkey listener and PTT listener."""
         if self._hotkey_listener is not None:
             try:
                 self._hotkey_listener.stop()
             except Exception:
                 pass
             self._hotkey_listener = None
+        if self._ptt_listener is not None:
+            try:
+                self._ptt_listener.stop()
+            except Exception:
+                pass
+            self._ptt_listener = None
         self._registered = False
         self._registered_hotkeys.clear()
+        self._ptt_active = False
         logger.info("Hotkeys unregistered")
+
+    # ------------------------------------------------------------------
+    # Push-to-talk press/release listener
+    # ------------------------------------------------------------------
+
+    def _setup_ptt_listener(self, pynput_format: str) -> None:
+        """Start a keyboard.Listener that tracks press/release for the PTT hotkey.
+
+        When all PTT keys are pressed simultaneously, emits ``ptt_pressed``.
+        When any PTT key is released, emits ``ptt_released``.
+        """
+        self._ptt_listener: object | None = None
+        self._ptt_active = False
+
+        # Parse the pynput format string into individual keys
+        # Format: "<ctrl>+<shift>+d" or "<ctrl>+<f1>"
+        parts = pynput_format.replace(" ", "").split("+")
+        ptt_keys: set = set()
+        _KEY_MAP: dict[str, object] = {
+            "<ctrl>": pynput_keyboard.Key.ctrl,
+            "<alt>": pynput_keyboard.Key.alt,
+            "<shift>": pynput_keyboard.Key.shift,
+            "<cmd>": pynput_keyboard.Key.cmd,
+            "<space>": pynput_keyboard.Key.space,
+            "<enter>": pynput_keyboard.Key.enter,
+            "<tab>": pynput_keyboard.Key.tab,
+            "<esc>": pynput_keyboard.Key.esc,
+            "<insert>": pynput_keyboard.Key.insert,
+            "<delete>": pynput_keyboard.Key.delete,
+            "<home>": pynput_keyboard.Key.home,
+            "<end>": pynput_keyboard.Key.end,
+            "<page_up>": pynput_keyboard.Key.page_up,
+            "<page_down>": pynput_keyboard.Key.page_down,
+            "<up>": pynput_keyboard.Key.up,
+            "<down>": pynput_keyboard.Key.down,
+            "<left>": pynput_keyboard.Key.left,
+            "<right>": pynput_keyboard.Key.right,
+        }
+        # Add F1-F12
+        for i in range(1, 13):
+            _KEY_MAP[f"<f{i}>"] = getattr(pynput_keyboard.Key, f"f{i}", None)
+
+        for part in parts:
+            if part in _KEY_MAP:
+                ptt_keys.add(_KEY_MAP[part])
+            elif len(part) == 3 and part.startswith("<") and part.endswith(">"):
+                # Single char like <d> → treat as regular key
+                ptt_keys.add(pynput_keyboard.KeyCode.from_char(part[1]))
+            elif len(part) == 1:
+                ptt_keys.add(pynput_keyboard.KeyCode.from_char(part))
+            else:
+                logger.warning("PTT listener: unknown key token '%s'", part)
+
+        if not ptt_keys:
+            logger.warning("PTT listener: no valid keys parsed from '%s'", pynput_format)
+            return
+
+        held: set = set()
+
+        def _on_press(key):
+            if key in ptt_keys:
+                held.add(key)
+                if not self._ptt_active and ptt_keys.issubset(held):
+                    self._ptt_active = True
+                    self.ptt_pressed.emit()
+
+        def _on_release(key):
+            if key in ptt_keys:
+                held.discard(key)
+                if self._ptt_active and not ptt_keys.issubset(held):
+                    self._ptt_active = False
+                    self.ptt_released.emit()
+
+        try:
+            self._ptt_listener = pynput_keyboard.Listener(
+                on_press=_on_press, on_release=_on_release
+            )
+            self._ptt_listener.daemon = True
+            self._ptt_listener.start()
+            logger.info("PTT press/release listener started for %s", pynput_format)
+        except Exception as exc:
+            logger.exception("Failed to start PTT listener: %s", exc)
+            self._ptt_listener = None
 
     # ------------------------------------------------------------------
     # Tray

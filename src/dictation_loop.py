@@ -14,6 +14,7 @@ signals marshal work from background threads onto the main thread.
 
 from __future__ import annotations
 
+import gc
 import logging
 import threading
 from enum import Enum
@@ -185,6 +186,7 @@ class DictationLoop(QObject):
         self._speech_detector.reset()
         self._auto_reset_timer.stop()
         self._set_state(DictationState.IDLE)
+        gc.collect()
 
     def toggle(self) -> None:
         """Toggle between IDLE and LISTENING/PROCESSING."""
@@ -307,6 +309,7 @@ class DictationLoop(QObject):
         self._set_state(DictationState.READY, "Dictation complete")
         self.text_pasted.emit(text)
         self._schedule_reset()
+        gc.collect()
 
     def _handle_transcription_error(self, message: str) -> None:
         """Handle transcription failure on the main Qt thread."""

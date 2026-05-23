@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import sys
 from pathlib import Path
+
+# ------------------------------------------------------------------
+# PyInstaller Windows: prevent fork bomb on multiprocessing spawn
+# ------------------------------------------------------------------
+multiprocessing.freeze_support()
 
 # ------------------------------------------------------------------
 # PrivacyGuard MUST be enforced before any import that might network
@@ -186,6 +192,8 @@ def main() -> int:
 
     # Connect signals
     shell.hotkey_pressed.connect(lambda _hid: dictation_loop.toggle())
+    shell.ptt_pressed.connect(dictation_loop.start)
+    shell.ptt_released.connect(dictation_loop.stop)
     dictation_loop.state_changed.connect(
         lambda state, msg: shell.show_status_panel(state.value, msg)
     )
