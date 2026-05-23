@@ -138,6 +138,15 @@ class ShellIntegration(QObject):
         "error": "#FFC107",      # warning
     }
 
+    # Cloud mode color mapping (blue theme)
+    _CLOUD_STATUS_COLORS: dict[str, str] = {
+        "idle": "#1565C0",      # blue
+        "listening": "#E65100",  # deep orange
+        "processing": "#F9A825", # amber
+        "ready": "#1976D2",      # blue
+        "error": "#C62828",      # dark red
+    }
+
     _STATUS_LABELS: dict[str, str] = {
         "idle": "Idle",
         "listening": "Listening...",
@@ -460,7 +469,8 @@ class ShellIntegration(QObject):
 
     def update_profile_tooltip(self, model_name: str = "") -> None:
         profile_name = self._settings.model_profile
-        tooltip = f"Spanglish Dictation — {profile_name}"
+        mode = self._get_profile_mode(profile_name).capitalize()
+        tooltip = f"Spanglish Dictation — {profile_name} [{mode}]"
         if model_name:
             tooltip += f" ({model_name})"
         self.update_tray_tooltip(tooltip)
@@ -529,14 +539,25 @@ class ShellIntegration(QObject):
     # ------------------------------------------------------------------
 
     def show_status_panel(self, status: str, detail: str = "") -> None:
-        """Show or update the floating status panel."""
+        """Show or update the floating status panel.
+
+        Displays a coloured floating panel with status, profile, and
+        current mode (local / cloud).  Local mode uses green status
+        colours; cloud mode uses a blue theme.
+        """
         if self._status_panel is None:
             self._status_panel = self._create_status_panel()
 
         self.status_changed.emit(status)
         self.update_action_state(status)
 
-        color = self._STATUS_COLORS.get(status, "#9E9E9E")
+        # Determine which colour map to use based on profile mode
+        mode = self._get_profile_mode(self._settings.model_profile)
+        if mode == "cloud":
+            color = self._CLOUD_STATUS_COLORS.get(status, "#1565C0")
+        else:
+            color = self._STATUS_COLORS.get(status, "#9E9E9E")
+
         label = self._STATUS_LABELS.get(status, status.capitalize())
         if detail:
             label = detail
@@ -546,6 +567,10 @@ class ShellIntegration(QObject):
                 label = f"{label} | {profile.display_name}"
             except KeyError:
                 label = f"{label} | {self._settings.model_profile}"
+
+        # Prepend a mode badge for clarity
+        mode_badge = "[Cloud]" if mode == "cloud" else "[Local]"
+        label = f"{mode_badge} {label}"
 
         if self._status_label is not None:
             self._status_label.setText(label)
@@ -589,6 +614,20 @@ class ShellIntegration(QObject):
             self._hide_status_panel()
         else:
             self.show_status_panel("idle")
+
+    def _get_profile_mode(self, profile_name: str) -> str:
+        """Return ``'cloud'`` or ``'local'`` for the given profile name.
+
+        Falls back to ``'local'`` when the profile is unknown or the
+        model manager is not available.
+        """
+        if self._model_manager is None:
+            return "local"
+        try:
+            profile = self._model_manager.get_profile(profile_name)
+            return profile.mode
+        except KeyError:
+            return "local"
 
     def _create_status_panel(self) -> QWidget:
         panel = QWidget()

@@ -30,7 +30,7 @@ def mock_user32():
 class TestShellIntegration:
     @staticmethod
     def _mock_model_manager():
-        from model_manager import Profile
+        from model_manager import CloudProviderConfig, Profile
 
         profile_a = Profile(
             canonical_name="cpu-portable",
@@ -49,11 +49,28 @@ class TestShellIntegration:
             fallback_order=["base"],
             backend_hint="whisper.cpp",
         )
+        profile_c = Profile(
+            canonical_name="cloud-azure-default",
+            display_name="Cloud - Azure Whisper",
+            description="Azure OpenAI Whisper API",
+            preferred_model="",
+            fallback_order=[],
+            backend_hint="cloud",
+            mode="cloud",
+            provider_config=CloudProviderConfig(
+                provider_type="azure",
+                endpoint_url="https://test.openai.azure.com",
+                api_key_id="cloud-azure-default",
+                model_name="whisper-1",
+                region="",
+            ),
+        )
         mgr = MagicMock()
-        mgr.list_profiles.return_value = [profile_a, profile_b]
+        mgr.list_profiles.return_value = [profile_a, profile_b, profile_c]
         mgr.get_profile.side_effect = lambda canonical: {
             "cpu-portable": profile_a,
             "cpu-high-accuracy": profile_b,
+            "cloud-azure-default": profile_c,
         }[canonical]
         return mgr
 
@@ -281,6 +298,67 @@ class TestShellIntegration:
         target = next(a for a in profile_menu.actions() if a.text() == "CPU High Accuracy")
         target.trigger()
         assert shell._settings.model_profile == "cpu-high-accuracy"
+
+    def test_tray_shows_cloud_profile_display_name(self, shell, qapp):
+        """Cloud profile display_name (Cloud - Azure Whisper) appears in menu."""
+        tray = shell.setup_tray()
+        menu = tray.contextMenu()
+        profile_menu = next(
+            a.menu() for a in menu.actions() if a.menu() and a.text() == "Profile"
+        )
+        labels = [a.text() for a in profile_menu.actions() if a.text()]
+        assert "Cloud - Azure Whisper" in labels
+
+    def test_status_panel_shows_local_badge_by_default(self, shell, qapp):
+        shell._settings.model_profile = "cpu-portable"
+        shell.show_status_panel("idle")
+        assert shell._status_label is not None
+        label = shell._status_label.text()
+        assert "[Local]" in label
+
+    def test_status_panel_shows_cloud_badge(self, shell, qapp):
+        shell._settings.model_profile = "cloud-azure-default"
+        shell.show_status_panel("idle")
+        assert shell._status_label is not None
+        label = shell._status_label.text()
+        assert "[Cloud]" in label
+        assert "Cloud - Azure Whisper" in label
+
+    def test_status_panel_uses_blue_theme_for_cloud_mode(self, shell, qapp):
+        """Cloud mode uses blue colours from _CLOUD_STATUS_COLORS."""
+        from shell_integration import ShellIntegration
+        shell._settings.model_profile = "cloud-azure-default"
+        shell.show_status_panel("ready")
+        assert "[Cloud]" in shell._status_label.text()
+
+    def test_profile_tooltip_shows_mode_for_local(self, shell, qapp):
+        shell.setup_tray()
+        shell._settings.model_profile = "cpu-portable"
+        shell.update_profile_tooltip()
+        tip = shell._tray_icon.toolTip()
+        assert "[Local]" in tip
+        assert "cpu-portable" in tip
+
+    def test_profile_tooltip_shows_mode_for_cloud(self, shell, qapp):
+        shell.setup_tray()
+        shell._settings.model_profile = "cloud-azure-default"
+        shell.update_profile_tooltip()
+        tip = shell._tray_icon.toolTip()
+        assert "[Cloud]" in tip
+        assert "cloud-azure-default" in tip
+
+    def test_get_profile_mode_returns_local_for_unknown(self, shell):
+        assert shell._get_profile_mode("nonexistent") == "local"
+
+    def test_get_profile_mode_returns_cloud_for_cloud_profile(self, shell):
+        assert shell._get_profile_mode("cloud-azure-default") == "cloud"
+
+    def test_get_profile_mode_returns_local_without_model_manager(self, qapp, mock_pynput):
+        from shell_integration import ShellIntegration
+        from settings_store import SettingsStore
+
+        shell = ShellIntegration(settings=SettingsStore(), model_manager=None)
+        assert shell._get_profile_mode("any") == "local"
 
     def test_profile_submenu_skipped_without_model_manager(self, qapp, mock_pynput):
         from shell_integration import ShellIntegration
