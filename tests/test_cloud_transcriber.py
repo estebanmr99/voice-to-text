@@ -5,9 +5,38 @@ All tests mock ``httpx.Client`` so no real HTTP connections are made.
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import MagicMock, patch
 
-import httpx
+# ---------------------------------------------------------------------------
+# Fake httpx module (httpx not installed as a project dependency)
+# The azure provider imports httpx at module level, so we inject a fake
+# into sys.modules BEFORE any modules that reference it are imported.
+# ---------------------------------------------------------------------------
+_fake_httpx = MagicMock()
+
+
+class _FakeHTTPStatusError(Exception):
+    def __init__(self, message, *, request=None, response=None):
+        super().__init__(message)
+        self.request = request
+        self.response = response
+
+
+class _FakeTimeoutException(Exception):
+    pass
+
+
+class _FakeRequestError(Exception):
+    pass
+
+
+_fake_httpx.HTTPStatusError = _FakeHTTPStatusError
+_fake_httpx.TimeoutException = _FakeTimeoutException
+_fake_httpx.RequestError = _FakeRequestError
+sys.modules["httpx"] = _fake_httpx
+
+import httpx  # noqa: E402 — imports the fake module from sys.modules
 import numpy as np
 import pytest
 
