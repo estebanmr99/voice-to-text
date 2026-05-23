@@ -16,7 +16,8 @@ multiprocessing.freeze_support()
 # ------------------------------------------------------------------
 from privacy_guard import PrivacyGuard
 
-PrivacyGuard().enforce()
+privacy_guard = PrivacyGuard()
+privacy_guard.enforce()
 
 # ------------------------------------------------------------------
 # Standard / third-party imports
@@ -32,13 +33,14 @@ from hardware_detector import detect_hardware
 from profile_resolver import resolve_profile
 from audio_capture import AudioCapture
 from speech_detector import SpeechDetector
-from transcriber import Transcriber
+from transcriber import Transcriber, TranscriptionError
 from paste_controller import PasteController
 from dictation_loop import DictationLoop
 from confirmation_dialog import ConfirmationDialog
 from shell_integration import ShellIntegration
 from post_processor import PostProcessor
 from glossary import GlossaryStore
+from cloud_transcriber import CloudTranscriber
 
 
 def _apply_profile_change(
@@ -46,14 +48,91 @@ def _apply_profile_change(
     settings: SettingsStore,
     model_manager: ModelManager,
     transcriber: Transcriber,
+    cloud_transcriber: CloudTranscriber,
+    dictation_loop: DictationLoop,
+    privacy_guard: PrivacyGuard,
     shell: ShellIntegration,
     diagnostics: Diagnostics,
     hardware_info,
 ) -> None:
-    """Apply profile change by resolving model and restarting transcriber."""
+    """Apply profile change by resolving model and switching transcriber mode.
+
+    Supports both local (whisper.cpp) and cloud (Azure/AWS) profiles.
+    When switching to a cloud profile the privacy guard whitelists only
+    the configured endpoint; when switching back to local the whitelist
+    is revoked and full network blocking is restored.
+    """
     diagnostics.event("profile_change_requested", profile=new_profile)
+
+    # Stop both transcribers before switching modes
     transcriber.stop()
+    cloud_transcriber.stop()
+
     resolution = resolve_profile(settings, model_manager, hardware_info)
+
+    # ------------------------------------------------------------------
+    # Cloud profile
+    # ------------------------------------------------------------------
+    if resolution.is_cloud:
+        if resolution.provider_config is None:
+            shell.show_notification(
+                "Spanglish Dictation",
+                f"Cloud profile '{new_profile}' has no provider configuration.",
+            )
+            diagnostics.event(
+                "profile_change_failed",
+                profile=new_profile,
+                error="Missing provider configuration",
+            )
+            return
+
+        # Whitelist only the configured cloud endpoint
+        privacy_guard.whitelist_endpoints([resolution.provider_config.endpoint_url])
+
+        # Build config dict from resolved CloudProviderConfig
+        config: dict[str, object] = {
+            "provider_type": resolution.provider_config.provider_type,
+            "endpoint_url": resolution.provider_config.endpoint_url,
+            "api_key_id": resolution.provider_config.api_key_id,
+        }
+        if resolution.provider_config.model_name:
+            config["deployment_name"] = resolution.provider_config.model_name
+        if resolution.provider_config.region:
+            config["region"] = resolution.provider_config.region
+
+        try:
+            cloud_transcriber.start(config)
+        except TranscriptionError as exc:
+            # Rollback: revoke whitelist if cloud start fails
+            privacy_guard.revoke_whitelist()
+            shell.show_notification(
+                "Spanglish Dictation",
+                f"Cloud profile '{new_profile}' failed: {exc}",
+            )
+            diagnostics.event(
+                "profile_change_failed",
+                profile=new_profile,
+                error=str(exc)[:100],
+            )
+            return
+
+        dictation_loop.set_active_transcriber(cloud_transcriber)
+        shell.update_profile_tooltip(resolution.provider_config.model_name)
+        diagnostics.event(
+            "profile_changed",
+            profile=resolution.profile_used,
+            provider=resolution.provider_config.provider_type,
+            fallback=resolution.fallback_applied,
+        )
+        if resolution.advisory_message:
+            shell.show_notification("Spanglish Dictation", resolution.advisory_message)
+        return
+
+    # ------------------------------------------------------------------
+    # Local profile — revoke whitelist, restore full blocking
+    # ------------------------------------------------------------------
+    privacy_guard.revoke_whitelist()
+
     if resolution.model_info is None:
         shell.show_notification(
             "Spanglish Dictation",
@@ -68,6 +147,7 @@ def _apply_profile_change(
 
     success = transcriber.start(resolution.model_info)
     if success:
+        dictation_loop.set_active_transcriber(transcriber)
         shell.update_profile_tooltip(resolution.model_info.name)
         diagnostics.event(
             "profile_changed",
@@ -140,6 +220,7 @@ def main() -> int:
     audio_capture = AudioCapture(device_index=settings.audio_device_index)
     speech_detector = SpeechDetector()
     transcriber = Transcriber(model_manager)
+    cloud_transcriber = CloudTranscriber(settings_store=settings)
     paste_controller = PasteController(diagnostics=diagnostics)
 
     # ------------------------------------------------------------------
@@ -179,6 +260,9 @@ def main() -> int:
             settings,
             model_manager,
             transcriber,
+            cloud_transcriber,
+            dictation_loop,
+            privacy_guard,
             shell,
             diagnostics,
             hardware_info,
@@ -235,7 +319,59 @@ def main() -> int:
 
     resolution = resolve_profile(settings, model_manager, hardware_info)
 
-    if resolution.model_info is None:
+    if resolution.is_cloud:
+        if resolution.provider_config is None:
+            shell.show_notification(
+                "Spanglish Dictation",
+                f"Cloud profile '{resolution.profile_used}' has no provider configuration.",
+            )
+            diagnostics.event(
+                "model_missing_at_startup",
+                profile=resolution.profile_used,
+                error="Missing cloud provider configuration",
+            )
+        else:
+            privacy_guard.whitelist_endpoints([resolution.provider_config.endpoint_url])
+            config: dict[str, object] = {
+                "provider_type": resolution.provider_config.provider_type,
+                "endpoint_url": resolution.provider_config.endpoint_url,
+                "api_key_id": resolution.provider_config.api_key_id,
+            }
+            if resolution.provider_config.model_name:
+                config["deployment_name"] = resolution.provider_config.model_name
+            if resolution.provider_config.region:
+                config["region"] = resolution.provider_config.region
+            try:
+                cloud_transcriber.start(config)
+            except TranscriptionError as exc:
+                privacy_guard.revoke_whitelist()
+                shell.show_notification(
+                    "Spanglish Dictation",
+                    f"Cloud profile failed: {exc}",
+                )
+                diagnostics.event(
+                    "model_missing_at_startup",
+                    profile=resolution.profile_used,
+                    error=str(exc)[:100],
+                )
+            else:
+                dictation_loop.set_active_transcriber(cloud_transcriber)
+                shell.update_profile_tooltip(resolution.provider_config.model_name)
+                diagnostics.event(
+                    "model_loaded",
+                    model=resolution.provider_config.model_name,
+                    profile=resolution.profile_used,
+                    fallback_applied=resolution.fallback_applied,
+                )
+                if resolution.advisory_message:
+                    shell.show_notification(
+                        "Spanglish Dictation", resolution.advisory_message
+                    )
+                    diagnostics.event(
+                        "profile_advisory",
+                        message=resolution.advisory_message[:100],
+                    )
+    elif resolution.model_info is None:
         shell.show_notification(
             "Spanglish Dictation",
             (
@@ -250,6 +386,7 @@ def main() -> int:
         )
     else:
         transcriber.start(resolution.model_info)
+        dictation_loop.set_active_transcriber(transcriber)
         shell.update_profile_tooltip(resolution.model_info.name)
         diagnostics.event(
             "model_loaded",
@@ -263,6 +400,14 @@ def main() -> int:
                 "profile_advisory",
                 message=resolution.advisory_message[:100],
             )
+
+    # Cleanup on app exit
+    def _on_quit() -> None:
+        transcriber.stop()
+        cloud_transcriber.stop()
+        privacy_guard.revoke_whitelist()
+
+    app.aboutToQuit.connect(_on_quit)
 
     diagnostics.event("tray_shown")
     return app.exec()
