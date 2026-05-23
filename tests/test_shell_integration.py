@@ -95,7 +95,8 @@ class TestShellIntegration:
 
         call_args = mock_user32.GlobalHotKeys.call_args[0][0]
         assert "<ctrl>+<shift>+g" in call_args
-        assert "<ctrl>+<alt>+f" in call_args
+        assert "<ctrl>+<alt>+f" not in call_args
+        assert mock_user32.Listener.called
 
     def test_duplicate_hotkeys_register_once(self, shell, mock_user32):
         shell._settings.hotkey_toggle = "Ctrl+Alt+F"
@@ -104,7 +105,7 @@ class TestShellIntegration:
         shell.register_hotkeys()
 
         call_args = mock_user32.GlobalHotKeys.call_args[0][0]
-        # Only one hotkey registered due to deduplication
+        # Only toggle is registered in GlobalHotKeys; PTT uses Listener.
         assert len(call_args) == 1
 
     def test_tray_menu_has_actions(self, shell, qapp):

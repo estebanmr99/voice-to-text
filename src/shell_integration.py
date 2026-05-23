@@ -192,9 +192,10 @@ class ShellIntegration(QObject):
             return False
 
         hotkey_map: dict[str, callable] = {}
+        # Register only toggle with GlobalHotKeys. Push-to-talk needs key
+        # release events, so it is handled by _setup_ptt_listener below.
         desired_hotkeys = [
             ("toggle", self._settings.hotkey_toggle),
-            ("push_to_talk", self._settings.hotkey_push_to_talk),
         ]
         seen: set[str] = set()
 
